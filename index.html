@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description"
+        content="Convert any image to 200x200 e-ink Watchy display compatible format with dithering">
+    <title>Watchy E-Ink Image Converter</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Animated Background -->
+        <div class="background-animation">
+            <div class="pixel-grid"></div>
+        </div>
+
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">
+                <div class="watch-icon">
+                    <div class="watch-face"></div>
+                    <div class="watch-band top"></div>
+                    <div class="watch-band bottom"></div>
+                </div>
+                <h1>Watchy Converter</h1>
+            </div>
+            <p class="tagline">Transform any image into e-ink display art</p>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Upload Section -->
+            <section class="upload-section">
+                <div class="upload-zone" id="uploadZone">
+                    <div class="upload-content">
+                        <div class="upload-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                <polyline points="17 8 12 3 7 8" />
+                                <line x1="12" y1="3" x2="12" y2="15" />
+                            </svg>
+                        </div>
+                        <h2>Drop your image here</h2>
+                        <p>or click to browse</p>
+                        <span class="supported-formats">Supports JPG, PNG, GIF, WebP, BMP</span>
+                    </div>
+                    <input type="file" id="fileInput" accept="image/*" hidden>
+                </div>
+            </section>
+
+            <!-- Settings Section -->
+            <section class="settings-section" id="settingsSection">
+                <h3>Conversion Settings</h3>
+                <div class="settings-grid">
+                    <div class="setting-item">
+                        <label for="imageName">Image Name</label>
+                        <input type="text" id="imageName" placeholder="my_image" pattern="[a-z_][a-z0-9_]*"
+                            title="Use lowercase letters, numbers, and underscores only">
+                    </div>
+                    <div class="setting-item">
+                        <label for="threshold">Threshold</label>
+                        <div class="range-container">
+                            <input type="range" id="threshold" min="0" max="255" value="128">
+                            <span id="thresholdValue">128</span>
+                        </div>
+                    </div>
+                    <div class="setting-item">
+                        <label for="ditherMethod">Dithering Method</label>
+                        <select id="ditherMethod">
+                            <option value="floyd-steinberg">Floyd-Steinberg (Best)</option>
+                            <option value="atkinson">Atkinson</option>
+                            <option value="ordered">Ordered (Bayer)</option>
+                            <option value="none">No Dithering</option>
+                        </select>
+                    </div>
+                    <div class="setting-item">
+                        <span class="setting-label">Invert Colors</span>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="invertColors">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Preview Section -->
+            <section class="preview-section" id="previewSection">
+                <div class="preview-container">
+                    <div class="preview-card original">
+                        <h4>Original</h4>
+                        <div class="preview-frame">
+                            <canvas id="originalCanvas"></canvas>
+                        </div>
+                        <span class="image-info" id="originalInfo">-</span>
+                    </div>
+
+                    <div class="arrow-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="5" y1="12" x2="19" y2="12" />
+                            <polyline points="12 5 19 12 12 19" />
+                        </svg>
+                    </div>
+
+                    <div class="preview-card converted">
+                        <h4>E-Ink Ready</h4>
+                        <div class="preview-frame watchy-frame">
+                            <div class="watchy-bezel">
+                                <canvas id="convertedCanvas" width="200" height="200"></canvas>
+                            </div>
+                        </div>
+                        <span class="image-info">200 × 200px • 1-bit</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Output Section -->
+            <section class="output-section" id="outputSection">
+                <div class="output-tabs">
+                    <button class="tab-btn active" data-tab="arduino">Arduino Code</button>
+                    <button class="tab-btn" data-tab="raw">Raw Bitmap</button>
+                </div>
+
+                <div class="output-content">
+                    <div class="tab-panel active" id="arduinoPanel">
+                        <div class="code-header">
+                            <span class="code-language">C++ / Arduino</span>
+                            <button class="copy-btn" id="copyArduino">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                                </svg>
+                                Copy
+                            </button>
+                        </div>
+                        <pre class="code-block"><code id="arduinoCode">// Upload an image to generate code</code></pre>
+                    </div>
+
+                    <div class="tab-panel" id="rawPanel">
+                        <div class="code-header">
+                            <span class="code-language">Hex Data</span>
+                            <button class="copy-btn" id="copyRaw">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                                </svg>
+                                Copy
+                            </button>
+                        </div>
+                        <pre class="code-block"><code id="rawCode">// Upload an image to generate data</code></pre>
+                    </div>
+                </div>
+
+                <div class="action-buttons">
+                    <button class="btn btn-primary" id="downloadBtn">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                            <polyline points="7 10 12 15 17 10" />
+                            <line x1="12" y1="15" x2="12" y2="3" />
+                        </svg>
+                        Download .h File
+                    </button>
+                    <button class="btn btn-secondary" id="downloadPngBtn">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                            <circle cx="8.5" cy="8.5" r="1.5" />
+                            <polyline points="21 15 16 10 5 21" />
+                        </svg>
+                        Download PNG
+                    </button>
+                </div>
+            </section>
+
+            <!-- Divider -->
+            <div class="section-divider">
+                <span>or</span>
+            </div>
+
+            <!-- Code to Preview Section -->
+            <section class="code-input-section">
+                <h3>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="16 18 22 12 16 6" />
+                        <polyline points="8 6 2 12 8 18" />
+                    </svg>
+                    Paste Code to Preview
+                </h3>
+                <div class="code-input-wrapper">
+                    <textarea id="codeInput"
+                        placeholder="Paste your Arduino bitmap code here...&#10;&#10;Example:&#10;const unsigned char my_image[] PROGMEM = {&#10;  0xff, 0xff, 0xff, ...&#10;};"></textarea>
+                    <div class="code-input-actions">
+                        <button class="btn btn-aqua" id="parseCodeBtn">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polygon points="5 3 19 12 5 21 5 3" />
+                            </svg>
+                            Generate Preview
+                        </button>
+                        <button class="btn btn-secondary" id="clearCodeBtn">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="18" y1="6" x2="6" y2="18" />
+                                <line x1="6" y1="6" x2="18" y2="18" />
+                            </svg>
+                            Clear
+                        </button>
+                    </div>
+                    <div class="error-message" id="parseError"></div>
+                </div>
+            </section>
+
+            <!-- Code Preview Result -->
+            <section class="code-preview-section" id="codePreviewSection">
+                <div class="code-preview-container">
+                    <div class="code-preview-frame">
+                        <canvas id="codePreviewCanvas" width="200" height="200"></canvas>
+                    </div>
+                    <div class="code-preview-info">
+                        <div class="image-name" id="parsedImageName">-</div>
+                        <div class="image-size">200 × 200px • 1-bit</div>
+                    </div>
+                    <div class="action-buttons">
+                        <button class="btn btn-secondary" id="downloadParsedPngBtn">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                                <circle cx="8.5" cy="8.5" r="1.5" />
+                                <polyline points="21 15 16 10 5 21" />
+                            </svg>
+                            Download as PNG
+                        </button>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>Made for <a href="https://watchy.sqfmi.com/" target="_blank" rel="noopener">Watchy</a> • 200×200 E-Paper
+                Display</p>
+        </footer>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+
+</html>
