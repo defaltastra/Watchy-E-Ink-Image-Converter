@@ -515,6 +515,8 @@ body {
     position: relative;
     width: 200px;
     height: 200px;
+    isolation: isolate;
+    /* Create stacking context for proper z-index */
 }
 
 #designCanvas {
@@ -523,6 +525,8 @@ body {
     height: 200px;
     background: #ebdbb2;
     image-rendering: pixelated;
+    position: relative;
+    z-index: 1;
 }
 
 #overlayCanvas {
@@ -534,6 +538,8 @@ body {
     background: transparent;
     pointer-events: none;
     image-rendering: pixelated;
+    z-index: 20;
+    /* Above everything including images */
 }
 
 .canvas-elements {
@@ -542,6 +548,8 @@ body {
     left: 0;
     width: 200px;
     height: 200px;
+    /* Remove z-index to allow children (widgets) to use their own z-index relative to overlayCanvas */
+    /* pointer-events: none; is kept so we can click through to the canvas when needed */
     pointer-events: none;
 }
 
@@ -565,9 +573,16 @@ body {
 .canvas-element {
     position: absolute;
     pointer-events: all;
-    /* Make elements clickable by default */
     cursor: move;
     user-select: none;
+    z-index: 30;
+    /* Widgets appear above overlay (z-20) */
+}
+
+/* Images stay below overlay so eraser can cover them */
+.canvas-element.element-image {
+    z-index: 5;
+    /* Below overlay (z-20) so eraser covers images */
 }
 
 .canvas-elements.drawing-mode .canvas-element {
@@ -751,6 +766,31 @@ body {
 .property-group input[type="text"]:focus {
     outline: none;
     border-color: var(--accent-primary);
+}
+
+.property-select {
+    width: 100%;
+    padding: 0.6rem 0.75rem;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    font-family: var(--font-main);
+    font-size: 0.85rem;
+    margin-bottom: 0.75rem;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.property-select:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 2px var(--accent-glow);
+}
+
+.property-select option {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
 }
 
 .checkbox-label {

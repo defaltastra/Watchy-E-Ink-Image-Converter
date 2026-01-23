@@ -34,6 +34,7 @@ class WatchfaceDesigner {
         this.maxUndoSteps = 50;
 
         this.elementIdCounter = 0;
+        this.customFonts = [];
 
         this.init();
     }
@@ -164,6 +165,34 @@ class WatchfaceDesigner {
         document.getElementById('generateCodeBtn').addEventListener('click', () => this.generateCode());
         document.getElementById('downloadPngBtn').addEventListener('click', () => this.downloadPng());
         document.getElementById('saveProjectBtn').addEventListener('click', () => this.saveProject());
+
+        // Font upload events
+        const fontUploadZone = document.getElementById('fontUploadZone');
+        const fontInput = document.getElementById('fontInput');
+
+        fontUploadZone.addEventListener('click', () => fontInput.click());
+        fontInput.addEventListener('change', (e) => this.handleFontUpload(e.target.files[0]));
+
+        fontUploadZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            fontUploadZone.style.borderColor = 'var(--accent-primary)';
+        });
+        fontUploadZone.addEventListener('dragleave', () => {
+            fontUploadZone.style.borderColor = '';
+        });
+        fontUploadZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            fontUploadZone.style.borderColor = '';
+            const file = e.dataTransfer.files[0];
+            if (file && (file.name.endsWith('.ttf') || file.name.endsWith('.otf'))) {
+                this.handleFontUpload(file);
+            }
+        });
+
+        // Font family change
+        document.getElementById('propFontFamily').addEventListener('change', (e) => {
+            this.updateElementProperty('fontFamily', e.target.value);
+        });
 
         // Modal
         document.getElementById('closeModal').addEventListener('click', () => this.closeModal());
@@ -332,6 +361,7 @@ class WatchfaceDesigner {
             fontSize: 24,
             strokeWidth: 2,
             text: '',
+            fontFamily: "'JetBrains Mono', monospace",
             visible: true,
             locked: false
         };
@@ -431,7 +461,7 @@ class WatchfaceDesigner {
 
     createElementDOM(element) {
         const div = document.createElement('div');
-        div.className = 'canvas-element';
+        div.className = 'canvas-element' + (element.type === 'image' ? ' element-image' : '');
         div.dataset.id = element.id;
         div.style.left = element.x + 'px';
         div.style.top = element.y + 'px';
@@ -482,7 +512,7 @@ class WatchfaceDesigner {
             case 'weather-hi-lo':
             case 'steps':
             case 'text':
-                content.innerHTML = `<span style="font-family: 'JetBrains Mono', monospace; font-size: ${element.fontSize}px; color: ${color}; white-space: nowrap;">${element.text}</span>`;
+                content.innerHTML = `<span style="font-family: ${element.fontFamily || "'JetBrains Mono', monospace"}; font-size: ${element.fontSize}px; color: ${color}; white-space: nowrap;">${element.text}</span>`;
                 break;
             case 'analog-clock':
                 content.innerHTML = `
@@ -742,6 +772,7 @@ class WatchfaceDesigner {
 
         if (hasText) {
             document.getElementById('propTextContent').value = this.selectedElement.text || '';
+            document.getElementById('propFontFamily').value = this.selectedElement.fontFamily || "'JetBrains Mono', monospace";
             document.getElementById('propFontSize').value = this.selectedElement.fontSize || 16;
             document.getElementById('propFontSizeValue').textContent = (this.selectedElement.fontSize || 16) + 'px';
         }
@@ -983,6 +1014,44 @@ class WatchfaceDesigner {
         reader.readAsDataURL(file);
     }
 
+    // ===== Font Upload =====
+    handleFontUpload(file) {
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            const fontName = file.name.split('.')[0].replace(/[^a-zA-Z0-9]/g, '_');
+            const fontData = e.target.result;
+
+            try {
+                const fontFace = new FontFace(fontName, fontData);
+                const loadedFace = await fontFace.load();
+                document.fonts.add(loadedFace);
+
+                this.customFonts.push({ name: fontName, family: fontName });
+
+                // Add to font family select
+                const select = document.getElementById('propFontFamily');
+                const option = document.createElement('option');
+                option.value = fontName;
+                option.textContent = fontName;
+                select.appendChild(option);
+
+                // If a text element is selected, switch to this font
+                if (this.selectedElement && ['digital-clock', 'date', 'day-of-week', 'weather-temp', 'weather-condition', 'weather-hi-lo', 'steps', 'text'].includes(this.selectedElement.type)) {
+                    this.updateElementProperty('fontFamily', fontName);
+                    select.value = fontName;
+                }
+
+                alert(`Font "${file.name}" loaded successfully!`);
+            } catch (err) {
+                console.error('Font loading failed:', err);
+                alert('Failed to load font. Please use a valid TTF/OTF file.');
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    }
+
     // ===== Canvas Rendering =====
     renderCanvas() {
         this.clearCanvas();
@@ -1163,9 +1232,13 @@ class WatchfaceDesigner {
         this.restoreState(state);
     }
 
-    renderElementsToCtx(targetCtx) {
+    renderElementsToCtx(targetCtx, onlyImages = null) {
         this.elements.forEach(element => {
             if (!element.visible || element.type === 'drawing') return;
+
+            // If onlyImages is true, only draw images. If false, only draw widgets. If null, draw all.
+            if (onlyImages === true && element.type !== 'image') return;
+            if (onlyImages === false && element.type === 'image') return;
 
             const color = element.color === 'white' ? '#ebdbb2' : '#1d2021';
             targetCtx.fillStyle = color;
@@ -1180,7 +1253,7 @@ class WatchfaceDesigner {
                 case 'weather-hi-lo':
                 case 'steps':
                 case 'text':
-                    targetCtx.font = `bold ${element.fontSize}px JetBrains Mono, monospace`;
+                    targetCtx.font = `bold ${element.fontSize}px ${element.fontFamily || "'JetBrains Mono', monospace"}`;
                     targetCtx.textBaseline = 'middle';
                     targetCtx.textAlign = 'center';
                     targetCtx.fillText(element.text, element.x + element.width / 2, element.y + element.height / 2);
@@ -1314,14 +1387,14 @@ class WatchfaceDesigner {
         // Draw base
         finalCtx.drawImage(this.canvas, 0, 0);
 
-        // Note: We need to draw the images/widgets too! 
-        // This is tricky because they are DOM elements.
-        // For a true 1-bit export, we should probably render them to finalCtx.
-        // Let's add that logic.
-        this.renderElementsToCtx(finalCtx);
+        // Draw only images first
+        this.renderElementsToCtx(finalCtx, true);
 
         // Draw overlay
         finalCtx.drawImage(this.overlayCanvas, 0, 0);
+
+        // Draw other widgets (non-images) on top of overlay
+        this.renderElementsToCtx(finalCtx, false);
 
         // Then convert to 1-bit
         const threshold = parseInt(document.getElementById('threshold').value);

@@ -63,6 +63,19 @@
                     </div>
 
                     <div class="widget-category">
+                        <h4>Fonts</h4>
+                        <div class="upload-widget-zone" id="fontUploadZone">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="4 7 4 4 20 4 20 7"></polyline>
+                                <line x1="9" y1="20" x2="15" y2="20"></line>
+                                <line x1="12" y1="4" x2="12" y2="20"></line>
+                            </svg>
+                            <span>Upload Font (TTF)</span>
+                            <input type="file" id="fontInput" accept=".ttf,.otf" hidden>
+                        </div>
+                    </div>
+
+                    <div class="widget-category">
                         <h4>Time & Date</h4>
                         <div class="widget-grid">
                             <div class="widget-item" draggable="true" data-widget="digital-clock">
@@ -382,6 +395,13 @@
                         </div>
 
                         <div class="property-group hidden" id="fontPropertiesGroup">
+                            <label>Font Family</label>
+                            <select id="propFontFamily" class="property-select">
+                                <option value="'JetBrains Mono', monospace">JetBrains Mono</option>
+                                <option value="Inter, sans-serif">Inter</option>
+                                <option value="serif">Serif</option>
+                                <option value="sans-serif">Sans-Serif</option>
+                            </select>
                             <label>Font Size</label>
                             <div class="range-container">
                                 <input type="range" id="propFontSize" min="8" max="72" value="24">
