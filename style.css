@@ -98,8 +98,15 @@ body {
 }
 
 @keyframes pulseBackground {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.6; }
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.6;
+    }
 }
 
 /* ===== Layout ===== */
@@ -164,8 +171,13 @@ body {
     border-radius: 3px;
 }
 
-.watch-band.top { top: 0; }
-.watch-band.bottom { bottom: 0; }
+.watch-band.top {
+    top: 0;
+}
+
+.watch-band.bottom {
+    bottom: 0;
+}
 
 .logo h1 {
     font-size: 1.75rem;
@@ -427,6 +439,7 @@ body {
     background: var(--accent-primary);
     border-color: var(--accent-primary);
     color: var(--bg-primary);
+    box-shadow: var(--shadow-glow);
 }
 
 .toolbar-btn.danger:hover {
@@ -471,7 +484,7 @@ body {
         inset 0 2px 4px rgba(235, 219, 178, 0.05),
         0 8px 32px rgba(0, 0, 0, 0.5),
         var(--shadow-glow);
-    transition: transform var(--transition-normal);
+    transition: transform 0.2s ease;
 }
 
 .watchy-display::before {
@@ -498,26 +511,68 @@ body {
     border-radius: 4px;
 }
 
+.canvas-container {
+    position: relative;
+    width: 200px;
+    height: 200px;
+}
+
 #designCanvas {
     display: block;
+    width: 200px;
+    height: 200px;
     background: #ebdbb2;
+    image-rendering: pixelated;
+}
+
+#overlayCanvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 200px;
+    height: 200px;
+    background: transparent;
+    pointer-events: none;
     image-rendering: pixelated;
 }
 
 .canvas-elements {
     position: absolute;
-    top: 16px;
-    left: 16px;
+    top: 0;
+    left: 0;
     width: 200px;
     height: 200px;
     pointer-events: none;
 }
 
+#brushCircle {
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    border: 1px solid var(--accent-primary);
+    border-radius: 50%;
+    pointer-events: none;
+    display: none;
+    z-index: 100;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 0 5px rgba(254, 128, 25, 0.5);
+}
+
+.drawing-mode #brushCircle {
+    display: block;
+}
+
 .canvas-element {
     position: absolute;
     pointer-events: all;
+    /* Make elements clickable by default */
     cursor: move;
     user-select: none;
+}
+
+.canvas-elements.drawing-mode .canvas-element {
+    pointer-events: none;
+    /* Disable element interaction when drawing/erasing */
 }
 
 .canvas-element.selected {
@@ -539,10 +594,29 @@ body {
     display: block;
 }
 
-.resize-handle.nw { top: -5px; left: -5px; cursor: nw-resize; }
-.resize-handle.ne { top: -5px; right: -5px; cursor: ne-resize; }
-.resize-handle.sw { bottom: -5px; left: -5px; cursor: sw-resize; }
-.resize-handle.se { bottom: -5px; right: -5px; cursor: se-resize; }
+.resize-handle.nw {
+    top: -5px;
+    left: -5px;
+    cursor: nw-resize;
+}
+
+.resize-handle.ne {
+    top: -5px;
+    right: -5px;
+    cursor: ne-resize;
+}
+
+.resize-handle.sw {
+    bottom: -5px;
+    left: -5px;
+    cursor: sw-resize;
+}
+
+.resize-handle.se {
+    bottom: -5px;
+    right: -5px;
+    cursor: se-resize;
+}
 
 .grid-overlay {
     position: absolute;
@@ -1027,11 +1101,11 @@ body {
     transition: all var(--transition-fast);
 }
 
-.toggle-switch input:checked + .slider {
+.toggle-switch input:checked+.slider {
     background: var(--accent-primary);
 }
 
-.toggle-switch input:checked + .slider::before {
+.toggle-switch input:checked+.slider::before {
     left: 26px;
     background: white;
 }
@@ -1310,6 +1384,7 @@ body {
         opacity: 0;
         transform: translateY(10px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);

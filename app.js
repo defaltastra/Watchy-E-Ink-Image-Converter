@@ -7,7 +7,10 @@ class WatchfaceDesigner {
     constructor() {
         this.canvas = document.getElementById('designCanvas');
         this.ctx = this.canvas.getContext('2d');
+        this.overlayCanvas = document.getElementById('overlayCanvas');
+        this.overlayCtx = this.overlayCanvas.getContext('2d');
         this.elementsContainer = document.getElementById('canvasElements');
+        this.brushCircle = document.getElementById('brushCircle');
         this.exportCanvas = document.getElementById('exportPreviewCanvas');
         this.exportCtx = this.exportCanvas.getContext('2d');
 
@@ -16,6 +19,9 @@ class WatchfaceDesigner {
 
         this.elements = [];
         this.selectedElement = null;
+        this.activeTool = 'select'; // 'select', 'brush', 'eraser'
+        this.isDrawing = false;
+        this.currentPath = null;
         this.isDragging = false;
         this.isResizing = false;
         this.resizeHandle = null;
@@ -56,10 +62,22 @@ class WatchfaceDesigner {
         watchyDisplay.addEventListener('dragover', (e) => this.handleCanvasDragOver(e));
         watchyDisplay.addEventListener('drop', (e) => this.handleCanvasDrop(e));
 
-        // Canvas click to deselect
-        this.canvas.addEventListener('click', (e) => {
-            if (e.target === this.canvas) {
-                this.selectElement(null);
+        // Canvas events
+        this.canvas.addEventListener('mousedown', (e) => this.handleCanvasMouseDown(e));
+        this.canvas.addEventListener('mousemove', (e) => this.handleCanvasMouseMove(e));
+        this.canvas.addEventListener('mouseup', () => this.handleCanvasMouseUp());
+        this.canvas.addEventListener('mouseleave', () => this.handleCanvasMouseUp());
+
+        // Brush circle tracking on the whole watchy display
+        watchyDisplay.addEventListener('mousemove', (e) => this.updateBrushCircle(e));
+        watchyDisplay.addEventListener('mouseleave', () => {
+            if (this.activeTool !== 'select') {
+                this.brushCircle.style.display = 'none';
+            }
+        });
+        watchyDisplay.addEventListener('mouseenter', () => {
+            if (this.activeTool !== 'select') {
+                this.brushCircle.style.display = 'block';
             }
         });
 
@@ -87,6 +105,9 @@ class WatchfaceDesigner {
         });
 
         // Toolbar buttons
+        document.getElementById('selectTool').addEventListener('click', () => this.setActiveTool('select'));
+        document.getElementById('brushTool').addEventListener('click', () => this.setActiveTool('brush'));
+        document.getElementById('eraserTool').addEventListener('click', () => this.setActiveTool('eraser'));
         document.getElementById('undoBtn').addEventListener('click', () => this.undo());
         document.getElementById('redoBtn').addEventListener('click', () => this.redo());
         document.getElementById('zoomInBtn').addEventListener('click', () => this.setZoom(this.zoom + 0.25));
@@ -106,6 +127,10 @@ class WatchfaceDesigner {
         });
         document.getElementById('propStrokeWidth').addEventListener('input', (e) => {
             document.getElementById('propStrokeWidthValue').textContent = e.target.value + 'px';
+            this.updateElementProperty('strokeWidth', parseInt(e.target.value));
+        });
+        document.getElementById('propBrushSize').addEventListener('input', (e) => {
+            document.getElementById('propBrushSizeValue').textContent = e.target.value + 'px';
             this.updateElementProperty('strokeWidth', parseInt(e.target.value));
         });
 
@@ -167,6 +192,27 @@ class WatchfaceDesigner {
         window.addEventListener('resize', () => this.updateLayout());
     }
 
+    setActiveTool(tool) {
+        this.activeTool = tool;
+
+        // Update toolbar UI
+        document.getElementById('selectTool').classList.toggle('active', tool === 'select');
+        document.getElementById('brushTool').classList.toggle('active', tool === 'brush');
+        document.getElementById('eraserTool').classList.toggle('active', tool === 'eraser');
+
+        if (tool !== 'select') {
+            this.selectElement(null);
+            this.elementsContainer.classList.add('drawing-mode');
+            document.getElementById('watchyDisplay').classList.add('drawing-mode');
+            this.canvas.style.cursor = 'none'; // Hide cursor, we use brush circle
+        } else {
+            this.elementsContainer.classList.remove('drawing-mode');
+            document.getElementById('watchyDisplay').classList.remove('drawing-mode');
+            this.canvas.style.cursor = 'default';
+            this.brushCircle.style.display = 'none';
+        }
+    }
+
     // ===== Widget Drag & Drop =====
     handleWidgetDragStart(e) {
         const widgetType = e.target.closest('.widget-item').dataset.widget;
@@ -176,6 +222,82 @@ class WatchfaceDesigner {
 
     handleWidgetDragEnd(e) {
         e.target.closest('.widget-item').style.opacity = '1';
+    }
+
+    handleCanvasMouseDown(e) {
+        if (this.activeTool === 'select') {
+            if (e.target === this.canvas) {
+                this.selectElement(null);
+            }
+            return;
+        }
+
+        this.isDrawing = true;
+        this.saveState();
+
+        const rect = this.canvas.getBoundingClientRect();
+        const x = Math.round((e.clientX - rect.left) / this.zoom);
+        const y = Math.round((e.clientY - rect.top) / this.zoom);
+
+        const brushSize = parseInt(document.getElementById('propBrushSize').value);
+
+        this.currentPath = {
+            id: ++this.elementIdCounter,
+            type: 'drawing',
+            points: [{ x, y }],
+            color: 'black',
+            isEraser: this.activeTool === 'eraser',
+            strokeWidth: brushSize,
+            visible: true
+        };
+
+        this.elements.push(this.currentPath);
+        this.renderCanvas();
+    }
+
+    updateBrushCircle(e) {
+        if (this.activeTool === 'select') return;
+
+        const watchyRect = document.getElementById('watchyDisplay').getBoundingClientRect();
+        // Divide by zoom because the container is CSS transformed
+        const brushX = (e.clientX - watchyRect.left) / this.zoom;
+        const brushY = (e.clientY - watchyRect.top) / this.zoom;
+
+        this.brushCircle.style.left = brushX + 'px';
+        this.brushCircle.style.top = brushY + 'px';
+
+        // Brush size in logical pixels (not scaled)
+        const brushSize = parseInt(document.getElementById('propBrushSize').value);
+        this.brushCircle.style.width = brushSize + 'px';
+        this.brushCircle.style.height = brushSize + 'px';
+        this.brushCircle.style.display = 'block';
+    }
+
+    handleCanvasMouseMove(e) {
+        // Update brush circle position
+        this.updateBrushCircle(e);
+
+        if (!this.isDrawing || !this.currentPath) return;
+
+        const rect = this.canvas.getBoundingClientRect();
+        const x = Math.round((e.clientX - rect.left) / this.zoom);
+        const y = Math.round((e.clientY - rect.top) / this.zoom);
+
+        // Only add point if it's different from last point
+        const lastPoint = this.currentPath.points[this.currentPath.points.length - 1];
+        if (lastPoint.x !== x || lastPoint.y !== y) {
+            this.currentPath.points.push({ x, y });
+            this.renderCanvas();
+        }
+    }
+
+    handleCanvasMouseUp() {
+        if (this.isDrawing) {
+            this.isDrawing = false;
+            this.currentPath = null;
+            this.updateLayers();
+            this.updateExportPreview();
+        }
     }
 
     handleCanvasDragOver(e) {
@@ -469,9 +591,10 @@ class WatchfaceDesigner {
         this.selectElement(element);
 
         const rect = e.target.closest('.canvas-element').getBoundingClientRect();
+        // Divide by zoom because getBoundingClientRect returns scaled coordinates
         this.dragOffset = {
-            x: e.clientX - rect.left,
-            y: e.clientY - rect.top,
+            x: (e.clientX - rect.left) / this.zoom,
+            y: (e.clientY - rect.top) / this.zoom,
             startX: element.x,
             startY: element.y,
             startWidth: element.width,
@@ -543,8 +666,14 @@ class WatchfaceDesigner {
             const x = (e.clientX - containerRect.left) / this.zoom - this.dragOffset.x;
             const y = (e.clientY - containerRect.top) / this.zoom - this.dragOffset.y;
 
-            this.selectedElement.x = Math.max(0, Math.min(Math.round(x), this.WIDTH - this.selectedElement.width));
-            this.selectedElement.y = Math.max(0, Math.min(Math.round(y), this.HEIGHT - this.selectedElement.height));
+            // Allow dragging even for elements larger than canvas
+            const minX = Math.min(0, this.WIDTH - this.selectedElement.width);
+            const maxX = Math.max(0, this.WIDTH - this.selectedElement.width);
+            const minY = Math.min(0, this.HEIGHT - this.selectedElement.height);
+            const maxY = Math.max(0, this.HEIGHT - this.selectedElement.height);
+
+            this.selectedElement.x = Math.max(minX, Math.min(Math.round(x), maxX));
+            this.selectedElement.y = Math.max(minY, Math.min(Math.round(y), maxY));
         }
 
         this.updateElementDOM(this.selectedElement);
@@ -576,15 +705,29 @@ class WatchfaceDesigner {
         const fontProps = document.getElementById('fontPropertiesGroup');
         const strokeProps = document.getElementById('strokePropertiesGroup');
         const imageProps = document.getElementById('imagePropertiesGroup');
+        const brushProps = document.getElementById('brushPropertiesGroup');
 
         if (!this.selectedElement) {
             noSelectionPanel.classList.remove('hidden');
             elementProperties.classList.add('hidden');
+
+            // Still show brush properties if brush/eraser tool is active
+            if (this.activeTool === 'brush' || this.activeTool === 'eraser') {
+                elementProperties.classList.remove('hidden');
+                document.querySelectorAll('.property-group').forEach(pg => pg.classList.add('hidden'));
+                brushProps.classList.remove('hidden');
+                document.querySelector('.property-group label').parentElement.classList.add('hidden'); // Hide position
+                elementProperties.querySelector('h3').textContent = this.activeTool.charAt(0).toUpperCase() + this.activeTool.slice(1) + ' Settings';
+            }
             return;
         }
 
+        elementProperties.querySelector('h3').textContent = 'Properties';
         noSelectionPanel.classList.add('hidden');
         elementProperties.classList.remove('hidden');
+        document.querySelectorAll('.property-group').forEach(pg => {
+            if (pg.id !== 'noSelectionPanel' && pg.id !== 'elementProperties') pg.classList.remove('hidden');
+        });
 
         // Update values
         document.getElementById('propX').value = this.selectedElement.x;
@@ -615,6 +758,18 @@ class WatchfaceDesigner {
         // Show/hide image properties
         const isImage = this.selectedElement.type === 'image';
         imageProps.classList.toggle('hidden', !isImage);
+
+        // Show/hide brush properties for drawing elements
+        const isDrawing = this.selectedElement.type === 'drawing';
+        brushProps.classList.toggle('hidden', !isDrawing);
+        if (isDrawing) {
+            document.getElementById('propBrushSize').value = this.selectedElement.strokeWidth;
+            document.getElementById('propBrushSizeValue').textContent = this.selectedElement.strokeWidth + 'px';
+            // Hide position for drawing elements as they are multipoint
+            document.querySelector('.property-group label').parentElement.classList.add('hidden');
+        } else {
+            document.querySelector('.property-group label').parentElement.classList.remove('hidden');
+        }
 
         // Update color selection
         document.querySelectorAll('.color-btn').forEach(btn => {
@@ -712,13 +867,16 @@ class WatchfaceDesigner {
                 case 'image':
                     iconSvg = '<svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="8.5" cy="8.5" r="1.5" fill="currentColor"/><polyline points="21 15 16 10 5 21" fill="none" stroke="currentColor" stroke-width="2"/></svg>';
                     break;
+                case 'drawing':
+                    iconSvg = '<svg viewBox="0 0 24 24"><path d="M12 19l7-7 3 3-7 7-3-3z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z" fill="none" stroke="currentColor" stroke-width="2"/></svg>';
+                    break;
                 default:
                     iconSvg = '<svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" fill="none" stroke="currentColor" stroke-width="2"/></svg>';
             }
 
             layerItem.innerHTML = `
                 <div class="layer-icon">${iconSvg}</div>
-                <span class="layer-name">${element.type}${element.text ? ': ' + element.text.substring(0, 10) : ''}</span>
+                <span class="layer-name">${element.type}${element.text ? ': ' + element.text.substring(0, 10) : ''}${element.type === 'drawing' ? ' (' + (element.color === 'white' ? 'Eraser' : 'Brush') + ')' : ''}</span>
                 <button class="layer-visibility">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         ${element.visible ?
@@ -828,95 +986,34 @@ class WatchfaceDesigner {
     // ===== Canvas Rendering =====
     renderCanvas() {
         this.clearCanvas();
+        this.overlayCtx.clearRect(0, 0, this.WIDTH, this.HEIGHT);
 
+        // Only render drawing elements to canvas
+        // Widgets and images are DOM elements - they're only rendered to canvas during export
         this.elements.forEach(element => {
             if (!element.visible) return;
+            if (element.type !== 'drawing') return; // Skip non-drawing elements
 
-            const color = element.color === 'white' ? '#ebdbb2' : '#1d2021';
-            this.ctx.fillStyle = color;
-            this.ctx.strokeStyle = color;
+            if (element.points.length < 2) return;
 
-            switch (element.type) {
-                case 'digital-clock':
-                case 'date':
-                case 'day-of-week':
-                case 'weather-temp':
-                case 'weather-condition':
-                case 'weather-hi-lo':
-                case 'steps':
-                case 'text':
-                    this.ctx.font = `bold ${element.fontSize}px JetBrains Mono, monospace`;
-                    this.ctx.textBaseline = 'middle';
-                    this.ctx.textAlign = 'center';
-                    this.ctx.fillText(element.text, element.x + element.width / 2, element.y + element.height / 2);
-                    break;
-                case 'analog-clock':
-                    const cx = element.x + element.width / 2;
-                    const cy = element.y + element.height / 2;
-                    const r = Math.min(element.width, element.height) / 2 - 2;
-
-                    this.ctx.beginPath();
-                    this.ctx.arc(cx, cy, r, 0, Math.PI * 2);
-                    this.ctx.lineWidth = 2;
-                    this.ctx.stroke();
-
-                    // Hour hand
-                    this.ctx.beginPath();
-                    this.ctx.moveTo(cx, cy);
-                    this.ctx.lineTo(cx, cy - r * 0.5);
-                    this.ctx.lineWidth = 3;
-                    this.ctx.stroke();
-
-                    // Minute hand
-                    this.ctx.beginPath();
-                    this.ctx.moveTo(cx, cy);
-                    this.ctx.lineTo(cx + r * 0.7, cy);
-                    this.ctx.lineWidth = 2;
-                    this.ctx.stroke();
-
-                    // Center dot
-                    this.ctx.beginPath();
-                    this.ctx.arc(cx, cy, 3, 0, Math.PI * 2);
-                    this.ctx.fill();
-                    break;
-                case 'weather-icon':
-                    this.drawWeatherIcon(element);
-                    break;
-                case 'battery':
-                    this.drawBattery(element);
-                    break;
-                case 'wifi':
-                    this.drawWifi(element);
-                    break;
-                case 'bluetooth':
-                    this.drawBluetooth(element);
-                    break;
-                case 'rectangle':
-                    this.ctx.lineWidth = element.strokeWidth;
-                    this.ctx.strokeRect(element.x, element.y, element.width, element.height);
-                    break;
-                case 'circle':
-                    const circleR = Math.min(element.width, element.height) / 2;
-                    this.ctx.beginPath();
-                    this.ctx.arc(element.x + element.width / 2, element.y + element.height / 2, circleR - element.strokeWidth / 2, 0, Math.PI * 2);
-                    this.ctx.lineWidth = element.strokeWidth;
-                    this.ctx.stroke();
-                    break;
-                case 'line':
-                    this.ctx.beginPath();
-                    this.ctx.moveTo(element.x, element.y + element.height / 2);
-                    this.ctx.lineTo(element.x + element.width, element.y + element.height / 2);
-                    this.ctx.lineWidth = element.strokeWidth;
-                    this.ctx.stroke();
-                    break;
-                case 'image':
-                    if (element.imageData) {
-                        const img = new Image();
-                        img.src = element.imageData;
-                        this.ctx.drawImage(img, element.x, element.y, element.width, element.height);
-                    }
-                    break;
+            // Draw on overlay context so it appears on top of images
+            this.overlayCtx.beginPath();
+            this.overlayCtx.moveTo(element.points[0].x, element.points[0].y);
+            for (let i = 1; i < element.points.length; i++) {
+                this.overlayCtx.lineTo(element.points[i].x, element.points[i].y);
             }
+            this.overlayCtx.lineWidth = element.strokeWidth;
+            this.overlayCtx.lineCap = 'round';
+            this.overlayCtx.lineJoin = 'round';
+
+            if (element.isEraser) {
+                // Eraser: draw with background color (will show as "erased" on 1-bit export)
+                this.overlayCtx.strokeStyle = '#ebdbb2';
+            } else {
+                // Brush: draw with black
+                this.overlayCtx.strokeStyle = '#1d2021';
+            }
+            this.overlayCtx.stroke();
         });
     }
 
@@ -1012,11 +1109,13 @@ class WatchfaceDesigner {
 
     // ===== Toolbar Actions =====
     setZoom(level) {
-        this.zoom = Math.max(0.5, Math.min(2, level));
+        this.zoom = Math.max(0.5, Math.min(3, level));
         document.getElementById('zoomLevel').textContent = Math.round(this.zoom * 100) + '%';
 
+        // Use CSS transform on the whole display - simpler and more reliable
         const display = document.getElementById('watchyDisplay');
         display.style.transform = `scale(${this.zoom})`;
+        display.style.transformOrigin = 'center center';
     }
 
     toggleGrid() {
@@ -1064,6 +1163,133 @@ class WatchfaceDesigner {
         this.restoreState(state);
     }
 
+    renderElementsToCtx(targetCtx) {
+        this.elements.forEach(element => {
+            if (!element.visible || element.type === 'drawing') return;
+
+            const color = element.color === 'white' ? '#ebdbb2' : '#1d2021';
+            targetCtx.fillStyle = color;
+            targetCtx.strokeStyle = color;
+
+            switch (element.type) {
+                case 'digital-clock':
+                case 'date':
+                case 'day-of-week':
+                case 'weather-temp':
+                case 'weather-condition':
+                case 'weather-hi-lo':
+                case 'steps':
+                case 'text':
+                    targetCtx.font = `bold ${element.fontSize}px JetBrains Mono, monospace`;
+                    targetCtx.textBaseline = 'middle';
+                    targetCtx.textAlign = 'center';
+                    targetCtx.fillText(element.text, element.x + element.width / 2, element.y + element.height / 2);
+                    break;
+                case 'analog-clock':
+                    const cx = element.x + element.width / 2;
+                    const cy = element.y + element.height / 2;
+                    const r = Math.min(element.width, element.height) / 2 - 2;
+                    targetCtx.beginPath();
+                    targetCtx.arc(cx, cy, r, 0, Math.PI * 2);
+                    targetCtx.lineWidth = 2;
+                    targetCtx.stroke();
+                    targetCtx.beginPath();
+                    targetCtx.moveTo(cx, cy);
+                    targetCtx.lineTo(cx, cy - r * 0.5);
+                    targetCtx.lineWidth = 3;
+                    targetCtx.stroke();
+                    targetCtx.beginPath();
+                    targetCtx.moveTo(cx, cy);
+                    targetCtx.lineTo(cx + r * 0.7, cy);
+                    targetCtx.lineWidth = 2;
+                    targetCtx.stroke();
+                    targetCtx.beginPath();
+                    targetCtx.arc(cx, cy, 3, 0, Math.PI * 2);
+                    targetCtx.fill();
+                    break;
+                case 'weather-icon':
+                    this.drawWeatherIconOnCtx(element, targetCtx);
+                    break;
+                case 'battery':
+                    this.drawBatteryOnCtx(element, targetCtx);
+                    break;
+                case 'wifi':
+                    this.drawWifiOnCtx(element, targetCtx);
+                    break;
+                case 'bluetooth':
+                    this.drawBluetoothOnCtx(element, targetCtx);
+                    break;
+                case 'rectangle':
+                    targetCtx.lineWidth = element.strokeWidth;
+                    targetCtx.strokeRect(element.x, element.y, element.width, element.height);
+                    break;
+                case 'circle':
+                    const circleR = Math.min(element.width, element.height) / 2;
+                    targetCtx.beginPath();
+                    targetCtx.arc(element.x + element.width / 2, element.y + element.height / 2, circleR - element.strokeWidth / 2, 0, Math.PI * 2);
+                    targetCtx.lineWidth = element.strokeWidth;
+                    targetCtx.stroke();
+                    break;
+                case 'line':
+                    targetCtx.beginPath();
+                    targetCtx.moveTo(element.x, element.y + element.height / 2);
+                    targetCtx.lineTo(element.x + element.width, element.y + element.height / 2);
+                    targetCtx.lineWidth = element.strokeWidth;
+                    targetCtx.stroke();
+                    break;
+                case 'image':
+                    if (element.imageData) {
+                        const img = new Image();
+                        img.src = element.imageData;
+                        targetCtx.drawImage(img, element.x, element.y, element.width, element.height);
+                    }
+                    break;
+            }
+        });
+    }
+
+    drawWeatherIconOnCtx(element, ctx) {
+        const cx = element.x + element.width / 2;
+        const cy = element.y + element.height / 2;
+        const r = Math.min(element.width, element.height) * 0.2;
+        ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+        ctx.lineWidth = 2;
+        for (let i = 0; i < 8; i++) {
+            const angle = (i * Math.PI) / 4;
+            ctx.beginPath();
+            ctx.moveTo(cx + Math.cos(angle) * (r + 4), cy + Math.sin(angle) * (r + 4));
+            ctx.lineTo(cx + Math.cos(angle) * (r + 8), cy + Math.sin(angle) * (r + 8));
+            ctx.stroke();
+        }
+    }
+
+    drawBatteryOnCtx(element, ctx) {
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(element.x + 1, element.y + 2, element.width - 5, element.height - 4);
+        ctx.fillRect(element.x + element.width - 4, element.y + element.height / 2 - 3, 3, 6);
+        ctx.fillRect(element.x + 3, element.y + 4, (element.width - 10) * 0.75, element.height - 8);
+    }
+
+    drawWifiOnCtx(element, ctx) {
+        const cx = element.x + element.width / 2;
+        const cy = element.y + element.height / 2;
+        ctx.lineWidth = 2; ctx.lineCap = 'round';
+        for (let i = 3; i >= 1; i--) {
+            const r = i * 5; ctx.beginPath(); ctx.arc(cx, cy + 5, r, Math.PI * 1.2, Math.PI * 1.8); ctx.stroke();
+        }
+        ctx.beginPath(); ctx.arc(cx, cy + 5, 2, 0, Math.PI * 2); ctx.fill();
+    }
+
+    drawBluetoothOnCtx(element, ctx) {
+        const cx = element.x + element.width / 2;
+        const cy = element.y + element.height / 2;
+        const size = Math.min(element.width, element.height) * 0.35;
+        ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+        ctx.beginPath();
+        ctx.moveTo(cx - size, cy - size * 0.6); ctx.lineTo(cx + size * 0.6, cy + size * 0.6); ctx.lineTo(cx, cy + size); ctx.lineTo(cx, cy - size); ctx.lineTo(cx + size * 0.6, cy - size * 0.6); ctx.lineTo(cx - size, cy + size * 0.6);
+        ctx.stroke();
+    }
+
     restoreState(state) {
         this.elements = JSON.parse(state);
         this.elementsContainer.innerHTML = '';
@@ -1079,13 +1305,31 @@ class WatchfaceDesigner {
         // First render the design canvas
         this.renderCanvas();
 
+        // Combine base canvas and overlay canvas
+        const finalCanvas = document.createElement('canvas');
+        finalCanvas.width = this.WIDTH;
+        finalCanvas.height = this.HEIGHT;
+        const finalCtx = finalCanvas.getContext('2d');
+
+        // Draw base
+        finalCtx.drawImage(this.canvas, 0, 0);
+
+        // Note: We need to draw the images/widgets too! 
+        // This is tricky because they are DOM elements.
+        // For a true 1-bit export, we should probably render them to finalCtx.
+        // Let's add that logic.
+        this.renderElementsToCtx(finalCtx);
+
+        // Draw overlay
+        finalCtx.drawImage(this.overlayCanvas, 0, 0);
+
         // Then convert to 1-bit
         const threshold = parseInt(document.getElementById('threshold').value);
         const ditherMethod = document.getElementById('ditherMethod').value;
         const invert = document.getElementById('invertColors').checked;
 
-        // Get image data from design canvas
-        const imageData = this.ctx.getImageData(0, 0, this.WIDTH, this.HEIGHT);
+        // Get image data from final canvas
+        const imageData = finalCtx.getImageData(0, 0, this.WIDTH, this.HEIGHT);
         const pixels = imageData.data;
 
         // Convert to grayscale
@@ -1387,6 +1631,12 @@ class WatchfaceDesigner {
         } else if (e.key === 'g' && (e.ctrlKey || e.metaKey)) {
             e.preventDefault();
             this.toggleGrid();
+        } else if (e.key === 'v') {
+            this.setActiveTool('select');
+        } else if (e.key === 'b') {
+            this.setActiveTool('brush');
+        } else if (e.key === 'e') {
+            this.setActiveTool('eraser');
         } else if (this.selectedElement && !e.ctrlKey && !e.metaKey) {
             // Arrow key movement
             const step = e.shiftKey ? 10 : 1;
