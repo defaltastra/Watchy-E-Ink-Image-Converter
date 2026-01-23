@@ -1538,11 +1538,164 @@ class WatchfaceDesigner {
         return output;
     }
 
-    generateCode() {
-        if (!this.processedImageData) {
-            this.updateExportPreview();
+    // Generate a bitmap that only contains STATIC content (drawings and images)
+    // This excludes all dynamic widgets so they can be rendered as code instead
+    generateStaticBitmap() {
+        // Create a temporary canvas for static-only rendering
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = this.WIDTH;
+        tempCanvas.height = this.HEIGHT;
+        const tempCtx = tempCanvas.getContext('2d');
+
+        // Fill with background color
+        tempCtx.fillStyle = '#ebdbb2';
+        tempCtx.fillRect(0, 0, this.WIDTH, this.HEIGHT);
+
+        // Draw ONLY images (no widgets)
+        this.elements.forEach(element => {
+            if (!element.visible) return;
+
+            if (element.type === 'image' && element.imageData) {
+                const img = new Image();
+                img.src = element.imageData;
+                tempCtx.drawImage(img, element.x, element.y, element.width, element.height);
+            }
+        });
+
+        // Draw ONLY drawings (brush strokes and eraser)
+        this.elements.forEach(element => {
+            if (!element.visible || element.type !== 'drawing') return;
+            if (element.points.length < 2) return;
+
+            tempCtx.beginPath();
+            tempCtx.moveTo(element.points[0].x, element.points[0].y);
+            for (let i = 1; i < element.points.length; i++) {
+                tempCtx.lineTo(element.points[i].x, element.points[i].y);
+            }
+            tempCtx.lineWidth = element.strokeWidth;
+            tempCtx.lineCap = 'round';
+            tempCtx.lineJoin = 'round';
+            tempCtx.strokeStyle = element.isEraser ? '#ebdbb2' : '#1d2021';
+            tempCtx.stroke();
+        });
+
+        // Convert to 1-bit using current settings
+        const threshold = parseInt(document.getElementById('threshold').value);
+        const ditherMethod = document.getElementById('ditherMethod').value;
+        const invert = document.getElementById('invertColors').checked;
+
+        const imageData = tempCtx.getImageData(0, 0, this.WIDTH, this.HEIGHT);
+        const pixels = imageData.data;
+
+        // Convert to grayscale
+        const grayscale = new Float32Array(this.WIDTH * this.HEIGHT);
+        for (let i = 0; i < pixels.length; i += 4) {
+            const gray = 0.299 * pixels[i] + 0.587 * pixels[i + 1] + 0.114 * pixels[i + 2];
+            grayscale[i / 4] = gray;
         }
 
+        // Apply dithering
+        let binaryData;
+        switch (ditherMethod) {
+            case 'floyd-steinberg':
+                binaryData = this.floydSteinbergDither(grayscale, threshold);
+                break;
+            case 'atkinson':
+                binaryData = this.atkinsonDither(grayscale, threshold);
+                break;
+            case 'ordered':
+                binaryData = this.orderedDither(grayscale);
+                break;
+            default:
+                binaryData = this.simpleDither(grayscale, threshold);
+        }
+
+        // Apply inversion
+        if (invert) {
+            for (let i = 0; i < binaryData.length; i++) {
+                binaryData[i] = binaryData[i] === 0 ? 255 : 0;
+            }
+        }
+
+        return binaryData;
+    }
+
+    // Collect all fonts required by the widgets
+    collectRequiredFonts(widgets) {
+        const fontMap = new Map();
+
+        // Font database with include paths and download info
+        const fontDatabase = {
+            'DSEG7': {
+                name: 'DSEG7 Classic Bold',
+                include: 'Fonts/DSEG7_Classic_Bold.h',
+                description: 'Seven-segment display font for digital clock',
+                downloadUrl: 'https://github.com/sqfmi/Watchy/tree/master/src/Fonts',
+                builtIn: true // Included with Watchy
+            },
+            'FreeSans': {
+                name: 'FreeSans',
+                include: 'Fonts/FreeSans.h',
+                description: 'Sans-serif font (Adafruit GFX)',
+                downloadUrl: 'https://github.com/adafruit/Adafruit-GFX-Library/tree/master/Fonts',
+                builtIn: false
+            },
+            'FreeSansBold': {
+                name: 'FreeSansBold',
+                include: 'Fonts/FreeSansBold.h',
+                description: 'Bold sans-serif font (Adafruit GFX)',
+                downloadUrl: 'https://github.com/adafruit/Adafruit-GFX-Library/tree/master/Fonts',
+                builtIn: false
+            },
+            'FreeSerif': {
+                name: 'FreeSerif',
+                include: 'Fonts/FreeSerif.h',
+                description: 'Serif font (Adafruit GFX)',
+                downloadUrl: 'https://github.com/adafruit/Adafruit-GFX-Library/tree/master/Fonts',
+                builtIn: false
+            },
+            'FreeMono': {
+                name: 'FreeMono',
+                include: 'Fonts/FreeMono.h',
+                description: 'Monospace font (Adafruit GFX)',
+                downloadUrl: 'https://github.com/adafruit/Adafruit-GFX-Library/tree/master/Fonts',
+                builtIn: false
+            }
+        };
+
+        widgets.forEach(widget => {
+            let fontKey = null;
+            let fontSize = widget.fontSize || 16;
+
+            switch (widget.type) {
+                case 'digital-clock':
+                    fontKey = 'DSEG7';
+                    break;
+                case 'date':
+                case 'day-of-week':
+                case 'weather-temp':
+                case 'weather-condition':
+                case 'weather-hi-lo':
+                case 'steps':
+                case 'text':
+                    fontKey = 'FreeSansBold';
+                    break;
+            }
+
+            if (fontKey && fontDatabase[fontKey] && !fontMap.has(fontKey)) {
+                fontMap.set(fontKey, {
+                    ...fontDatabase[fontKey],
+                    sizes: new Set([fontSize])
+                });
+            } else if (fontKey && fontMap.has(fontKey)) {
+                fontMap.get(fontKey).sizes.add(fontSize);
+            }
+        });
+
+        return Array.from(fontMap.values());
+    }
+
+    generateCode() {
         let name = document.getElementById('exportName').value || 'watchface';
         name = name.toLowerCase().replace(/[^a-z0-9_]/g, '_');
         if (/^[0-9]/.test(name)) name = '_' + name;
@@ -1555,17 +1708,40 @@ class WatchfaceDesigner {
             el.visible && ['drawing', 'image'].includes(el.type)
         );
 
+        // Generate a separate bitmap that ONLY includes static content (no widgets)
+        // This ensures widgets are not burned into the bitmap
+        const staticBitmapData = this.generateStaticBitmap();
+
+        // Collect required fonts from widgets
+        const requiredFonts = this.collectRequiredFonts(widgets);
+
         // Generate Arduino code
         let arduinoCode = `// ========================================\n`;
         arduinoCode += `// ${name.toUpperCase()} WATCHFACE\n`;
         arduinoCode += `// Generated by Watchy Watchface Designer\n`;
         arduinoCode += `// ========================================\n\n`;
 
-        arduinoCode += `#include <Watchy.h>\n\n`;
+        arduinoCode += `#include <Watchy.h>\n`;
+
+        // Add font includes
+        if (requiredFonts.length > 0) {
+            arduinoCode += `\n// ===== REQUIRED FONTS =====\n`;
+            arduinoCode += `// Make sure these fonts are available in your project!\n`;
+            requiredFonts.forEach(font => {
+                arduinoCode += `#include "${font.include}" // ${font.description}\n`;
+            });
+            arduinoCode += `\n// Font Download Links:\n`;
+            requiredFonts.forEach(font => {
+                if (font.downloadUrl) {
+                    arduinoCode += `// - ${font.name}: ${font.downloadUrl}\n`;
+                }
+            });
+        }
+        arduinoCode += `\n`;
 
         // Generate background bitmap if there's static content
         if (hasStaticContent) {
-            const bytes = this.convertToBytes(this.processedImageData);
+            const bytes = this.convertToBytes(staticBitmapData);
             arduinoCode += `// Background bitmap (includes images and drawings)\n`;
             arduinoCode += `const unsigned char ${name}_background[] PROGMEM = {\n`;
             for (let i = 0; i < bytes.length; i++) {
@@ -1602,10 +1778,10 @@ class WatchfaceDesigner {
 
         document.getElementById('arduinoCode').textContent = arduinoCode;
 
-        // Generate raw hex (just the background bitmap)
+        // Generate raw hex (just the static background bitmap, no widgets)
         let rawCode = '';
         if (hasStaticContent) {
-            const bytes = this.convertToBytes(this.processedImageData);
+            const bytes = this.convertToBytes(staticBitmapData);
             for (let i = 0; i < bytes.length; i++) {
                 rawCode += bytes[i].toString(16).padStart(2, '0');
                 if ((i + 1) % 25 === 0) rawCode += '\n';
