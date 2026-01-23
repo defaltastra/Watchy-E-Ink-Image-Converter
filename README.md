@@ -1,46 +1,118 @@
-# Watchy E-Ink Image Converter
+# Watchy Watchface Designer
 
-A web-based tool to convert images into a 200x200 1-bit format compatible with the [Watchy](https://watchy.sqfmi.com/) e-paper display. Features a premium **Gruvbox** dark theme.
+A **Canva-like** web tool for designing custom watchfaces for the [Watchy](https://watchy.sqfmi.com/) e-paper smartwatch. Drag and drop widgets, upload images, and export Arduino-ready code!
 
-![Watchy Converter](screenshot.png)
+![Watchy Watchface Designer](screenshot.png)
 
-## Features
+## ✨ Features
 
-- **Image Conversion**:
-  - Upload any image format (JPG, PNG, GIF, WebP).
-  - Automatically resizes and centers functionality to 200x200px.
-  - **Dithering Algorithms**: Floyd-Steinberg (Best), Atkinson, Ordered (Bayer), and None.
-  - Adjustable brightness **Threshold**.
-  - **Invert Colors** toggle for dark-on-light or light-on-dark styles.
+### 🎨 Visual Design Canvas
+- **200×200 pixel canvas** matching Watchy's e-ink display
+- **Drag & drop widgets** from the widget library
+- **Real-time preview** of your watchface design
+- **Grid overlay** for precise alignment
+- **Zoom controls** for detailed work
 
-- **Code Generation**:
-  - Generates ready-to-use **Arduino C++ code** (`PROGMEM`) for your Watchy project.
-  - view **Raw Hex** data.
-  - Download as a `.h` header file.
-  - Download the converted 1-bit image as a PNG.
+### 📦 Widget Library
+- **Time & Date**: Digital clock, analog clock, date, day of week
+- **Weather**: Temperature, weather icon, condition text, high/low temps
+- **Status**: Battery indicator, step counter, WiFi, Bluetooth icons
+- **Shapes**: Rectangle, circle, line, custom text
+- **Images**: Upload your own images
 
-- **Preview Tool**:
-  - Paste existing Arduino bitmap code to instantly generate a visual preview.
-  - Useful for checking what a codebase's images look like without flashing the watch.
+### 🎛️ Element Properties
+- **Position (X, Y)** - Precise pixel positioning
+- **Size (Width, Height)** - Resize any element
+- **Lock aspect ratio** - Maintain proportions while resizing
+- **Font size** - Adjust text size (8-72px)
+- **Stroke width** - Customize shape borders
+- **Color** - Black or white (1-bit e-ink)
 
-## Usage
+### 📚 Layers System
+- **Layer ordering** - Move elements up/down
+- **Visibility toggle** - Show/hide elements
+- **Element selection** - Click to select from layer list
+
+### 🔄 Undo/Redo
+- Full history support with keyboard shortcuts
+- Up to 50 undo steps
+
+### 📤 Export Options
+- **Arduino Code** - Ready-to-use C++ PROGMEM array
+- **Raw Hex** - Direct bitmap data
+- **Download .h file** - Header file for your project
+- **Download PNG** - 1-bit image preview
+- **Save Project** - JSON project file for later editing
+
+### 🎨 Dithering Options
+- **Floyd-Steinberg** - Best for photos and gradients
+- **Atkinson** - Classic Mac-style dithering
+- **Ordered (Bayer)** - Pattern-based dithering
+- **No Dithering** - Simple threshold
+
+## 🚀 Usage
 
 1. **Open the Tool**: Simply open `index.html` in any modern web browser.
-2. **Convert an Image**:
-   - Drag & drop an image or click to upload.
-   - Adjust the **Threshold** slider to get the best detail.
-   - Try different **Dithering** methods (Floyd-Steinberg is recommended for photos).
-   - Copy the generates C++ code or download the `.h` file.
-3. **Add to Watchy**:
-   - Copy the generated array into your Watchy project's `images.h` file.
-   - Use it in your code: `display.drawBitmap(0, 0, my_image, 200, 200, GxEPD_WHITE);`
 
-## Tech Stack
+2. **Add Widgets**: 
+   - Drag widgets from the left panel onto the canvas
+   - Or click a widget to add it at center
+
+3. **Customize Elements**:
+   - Click to select an element
+   - Drag to move, or use corner handles to resize
+   - Adjust properties in the right panel
+   - Use arrow keys for pixel-perfect positioning
+
+4. **Manage Layers**:
+   - Use the layers panel to reorder elements
+   - Toggle visibility with the eye icon
+   - Click layer names to select elements
+
+5. **Export Your Watchface**:
+   - Adjust dithering settings for best results
+   - Click "Generate Arduino Code" to get the C++ code
+   - Download the `.h` file for your Watchy project
+
+6. **Add to Watchy**:
+   ```cpp
+   // In your Watchy project
+   #include "my_watchface.h"
+   
+   display.drawBitmap(0, 0, my_watchface, 200, 200, GxEPD_WHITE);
+   ```
+
+## ⌨️ Keyboard Shortcuts
+
+| Shortcut | Action |
+|----------|--------|
+| `Delete` / `Backspace` | Delete selected element |
+| `Ctrl+D` | Duplicate selected element |
+| `Ctrl+Z` | Undo |
+| `Ctrl+Shift+Z` | Redo |
+| `Ctrl+G` | Toggle grid |
+| `Arrow keys` | Move selected element (1px) |
+| `Shift+Arrow` | Move selected element (10px) |
+| `Escape` | Deselect / Close modal |
+
+## 🛠️ Tech Stack
 
 - **Core**: HTML5, CSS3, Vanilla JavaScript
 - **Styling**: Custom CSS variables, Gruvbox color palette, Glassmorphism effects
-- **Processing**: Client-side Canvas API for pixel manipulation
+- **Canvas**: HTML5 Canvas API for rendering and image processing
+- **Fonts**: Inter (UI) + JetBrains Mono (code/display)
 
-## License
+## 📱 Browser Support
 
-This project is open source and available under the [MIT License](../MIT%20License).
+Works in all modern browsers:
+- Chrome/Edge 80+
+- Firefox 75+
+- Safari 13+
+
+## 📄 License
+
+This project is open source and available under the [MIT License](LICENSE).
+
+---
+
+Made with ❤️ for the Watchy community

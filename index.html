@@ -4,9 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description"
-        content="Convert any image to 200x200 e-ink Watchy display compatible format with dithering">
-    <title>Watchy E-Ink Image Converter</title>
+    <meta name="description" content="Design custom watchfaces for Watchy e-ink smartwatch with drag-and-drop widgets">
+    <title>Watchy Watchface Designer</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
@@ -30,212 +29,536 @@
                     <div class="watch-band top"></div>
                     <div class="watch-band bottom"></div>
                 </div>
-                <h1>Watchy Converter</h1>
+                <h1>Watchface Designer</h1>
             </div>
-            <p class="tagline">Transform any image into e-ink display art</p>
+            <p class="tagline">Create stunning watchfaces for your Watchy e-ink display</p>
         </header>
 
         <!-- Main Content -->
         <main class="main-content">
-            <!-- Upload Section -->
-            <section class="upload-section">
-                <div class="upload-zone" id="uploadZone">
-                    <div class="upload-content">
-                        <div class="upload-icon">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                                <polyline points="17 8 12 3 7 8" />
-                                <line x1="12" y1="3" x2="12" y2="15" />
-                            </svg>
-                        </div>
-                        <h2>Drop your image here</h2>
-                        <p>or click to browse</p>
-                        <span class="supported-formats">Supports JPG, PNG, GIF, WebP, BMP</span>
-                    </div>
-                    <input type="file" id="fileInput" accept="image/*" hidden>
-                </div>
-            </section>
-
-            <!-- Settings Section -->
-            <section class="settings-section" id="settingsSection">
-                <h3>Conversion Settings</h3>
-                <div class="settings-grid">
-                    <div class="setting-item">
-                        <label for="imageName">Image Name</label>
-                        <input type="text" id="imageName" placeholder="my_image" pattern="[a-z_][a-z0-9_]*"
-                            title="Use lowercase letters, numbers, and underscores only">
-                    </div>
-                    <div class="setting-item">
-                        <label for="threshold">Threshold</label>
-                        <div class="range-container">
-                            <input type="range" id="threshold" min="0" max="255" value="128">
-                            <span id="thresholdValue">128</span>
-                        </div>
-                    </div>
-                    <div class="setting-item">
-                        <label for="ditherMethod">Dithering Method</label>
-                        <select id="ditherMethod">
-                            <option value="floyd-steinberg">Floyd-Steinberg (Best)</option>
-                            <option value="atkinson">Atkinson</option>
-                            <option value="ordered">Ordered (Bayer)</option>
-                            <option value="none">No Dithering</option>
-                        </select>
-                    </div>
-                    <div class="setting-item">
-                        <span class="setting-label">Invert Colors</span>
-                        <label class="toggle-switch">
-                            <input type="checkbox" id="invertColors">
-                            <span class="slider"></span>
-                        </label>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Preview Section -->
-            <section class="preview-section" id="previewSection">
-                <div class="preview-container">
-                    <div class="preview-card original">
-                        <h4>Original</h4>
-                        <div class="preview-frame">
-                            <canvas id="originalCanvas"></canvas>
-                        </div>
-                        <span class="image-info" id="originalInfo">-</span>
-                    </div>
-
-                    <div class="arrow-icon">
+            <div class="designer-layout">
+                <!-- Left Panel - Widget Library -->
+                <aside class="widget-panel">
+                    <h3>
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <line x1="5" y1="12" x2="19" y2="12" />
-                            <polyline points="12 5 19 12 12 19" />
+                            <rect x="3" y="3" width="7" height="7" rx="1"></rect>
+                            <rect x="14" y="3" width="7" height="7" rx="1"></rect>
+                            <rect x="3" y="14" width="7" height="7" rx="1"></rect>
+                            <rect x="14" y="14" width="7" height="7" rx="1"></rect>
                         </svg>
+                        Widgets
+                    </h3>
+
+                    <div class="widget-category">
+                        <h4>Images</h4>
+                        <div class="upload-widget-zone" id="widgetUploadZone">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                                <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                                <polyline points="21 15 16 10 5 21"></polyline>
+                            </svg>
+                            <span>Upload Image</span>
+                            <input type="file" id="widgetImageInput" accept="image/*" hidden>
+                        </div>
                     </div>
 
-                    <div class="preview-card converted">
-                        <h4>E-Ink Ready</h4>
-                        <div class="preview-frame watchy-frame">
-                            <div class="watchy-bezel">
-                                <canvas id="convertedCanvas" width="200" height="200"></canvas>
+                    <div class="widget-category">
+                        <h4>Time & Date</h4>
+                        <div class="widget-grid">
+                            <div class="widget-item" draggable="true" data-widget="digital-clock">
+                                <div class="widget-preview">
+                                    <span class="time-preview">12:30</span>
+                                </div>
+                                <span>Digital Clock</span>
+                            </div>
+                            <div class="widget-item" draggable="true" data-widget="analog-clock">
+                                <div class="widget-preview">
+                                    <svg viewBox="0 0 40 40">
+                                        <circle cx="20" cy="20" r="18" fill="none" stroke="currentColor"
+                                            stroke-width="2" />
+                                        <line x1="20" y1="20" x2="20" y2="8" stroke="currentColor" stroke-width="2" />
+                                        <line x1="20" y1="20" x2="28" y2="20" stroke="currentColor"
+                                            stroke-width="1.5" />
+                                    </svg>
+                                </div>
+                                <span>Analog Clock</span>
+                            </div>
+                            <div class="widget-item" draggable="true" data-widget="date">
+                                <div class="widget-preview">
+                                    <span class="date-preview">Jan 23</span>
+                                </div>
+                                <span>Date</span>
+                            </div>
+                            <div class="widget-item" draggable="true" data-widget="day-of-week">
+                                <div class="widget-preview">
+                                    <span class="day-preview">THU</span>
+                                </div>
+                                <span>Day of Week</span>
                             </div>
                         </div>
-                        <span class="image-info">200 × 200px • 1-bit</span>
                     </div>
-                </div>
-            </section>
 
-            <!-- Output Section -->
-            <section class="output-section" id="outputSection">
-                <div class="output-tabs">
-                    <button class="tab-btn active" data-tab="arduino">Arduino Code</button>
-                    <button class="tab-btn" data-tab="raw">Raw Bitmap</button>
-                </div>
+                    <div class="widget-category">
+                        <h4>Weather</h4>
+                        <div class="widget-grid">
+                            <div class="widget-item" draggable="true" data-widget="weather-temp">
+                                <div class="widget-preview">
+                                    <span class="temp-preview">23°</span>
+                                </div>
+                                <span>Temperature</span>
+                            </div>
+                            <div class="widget-item" draggable="true" data-widget="weather-icon">
+                                <div class="widget-preview">
+                                    <svg viewBox="0 0 40 40" class="weather-sun">
+                                        <circle cx="20" cy="20" r="8" fill="currentColor" />
+                                        <g stroke="currentColor" stroke-width="2">
+                                            <line x1="20" y1="4" x2="20" y2="8" />
+                                            <line x1="20" y1="32" x2="20" y2="36" />
+                                            <line x1="4" y1="20" x2="8" y2="20" />
+                                            <line x1="32" y1="20" x2="36" y2="20" />
+                                        </g>
+                                    </svg>
+                                </div>
+                                <span>Weather Icon</span>
+                            </div>
+                            <div class="widget-item" draggable="true" data-widget="weather-condition">
+                                <div class="widget-preview">
+                                    <span class="condition-preview">Sunny</span>
+                                </div>
+                                <span>Condition</span>
+                            </div>
+                            <div class="widget-item" draggable="true" data-widget="weather-hi-lo">
+                                <div class="widget-preview">
+                                    <span class="hilo-preview">H:28° L:15°</span>
+                                </div>
+                                <span>Hi/Lo Temp</span>
+                            </div>
+                        </div>
+                    </div>
 
-                <div class="output-content">
-                    <div class="tab-panel active" id="arduinoPanel">
-                        <div class="code-header">
-                            <span class="code-language">C++ / Arduino</span>
-                            <button class="copy-btn" id="copyArduino">
+                    <div class="widget-category">
+                        <h4>Status</h4>
+                        <div class="widget-grid">
+                            <div class="widget-item" draggable="true" data-widget="battery">
+                                <div class="widget-preview">
+                                    <svg viewBox="0 0 40 24">
+                                        <rect x="2" y="4" width="32" height="16" rx="2" fill="none"
+                                            stroke="currentColor" stroke-width="2" />
+                                        <rect x="34" y="8" width="4" height="8" rx="1" fill="currentColor" />
+                                        <rect x="5" y="7" width="20" height="10" rx="1" fill="currentColor" />
+                                    </svg>
+                                </div>
+                                <span>Battery</span>
+                            </div>
+                            <div class="widget-item" draggable="true" data-widget="steps">
+                                <div class="widget-preview">
+                                    <span class="steps-preview">🚶 5.2k</span>
+                                </div>
+                                <span>Steps</span>
+                            </div>
+                            <div class="widget-item" draggable="true" data-widget="wifi">
+                                <div class="widget-preview">
+                                    <svg viewBox="0 0 40 40">
+                                        <path d="M8 20 Q20 8 32 20" fill="none" stroke="currentColor" stroke-width="3"
+                                            stroke-linecap="round" />
+                                        <path d="M12 25 Q20 17 28 25" fill="none" stroke="currentColor" stroke-width="3"
+                                            stroke-linecap="round" />
+                                        <circle cx="20" cy="32" r="3" fill="currentColor" />
+                                    </svg>
+                                </div>
+                                <span>WiFi</span>
+                            </div>
+                            <div class="widget-item" draggable="true" data-widget="bluetooth">
+                                <div class="widget-preview">
+                                    <svg viewBox="0 0 40 40">
+                                        <path
+                                            d="M20 6 L30 16 L20 26 L20 6 M20 26 L30 36 L20 46 M20 26 L10 16 M20 26 L10 36"
+                                            fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+                                            stroke-linejoin="round" transform="translate(0, -6)" />
+                                    </svg>
+                                </div>
+                                <span>Bluetooth</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="widget-category">
+                        <h4>Shapes & Graphics</h4>
+                        <div class="widget-grid">
+                            <div class="widget-item" draggable="true" data-widget="rectangle">
+                                <div class="widget-preview">
+                                    <div class="shape-rect"></div>
+                                </div>
+                                <span>Rectangle</span>
+                            </div>
+                            <div class="widget-item" draggable="true" data-widget="circle">
+                                <div class="widget-preview">
+                                    <div class="shape-circle"></div>
+                                </div>
+                                <span>Circle</span>
+                            </div>
+                            <div class="widget-item" draggable="true" data-widget="line">
+                                <div class="widget-preview">
+                                    <div class="shape-line"></div>
+                                </div>
+                                <span>Line</span>
+                            </div>
+                            <div class="widget-item" draggable="true" data-widget="text">
+                                <div class="widget-preview">
+                                    <span class="text-preview">Aa</span>
+                                </div>
+                                <span>Text</span>
+                            </div>
+                        </div>
+                    </div>
+                </aside>
+
+                <!-- Center - Canvas Area -->
+                <section class="canvas-area">
+                    <div class="canvas-toolbar">
+                        <div class="toolbar-group">
+                            <button class="toolbar-btn" id="undoBtn" title="Undo">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                                    <path d="M3 7v6h6"></path>
+                                    <path d="M21 17a9 9 0 00-9-9 9 9 0 00-6 2.3L3 13"></path>
                                 </svg>
-                                Copy
+                            </button>
+                            <button class="toolbar-btn" id="redoBtn" title="Redo">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M21 7v6h-6"></path>
+                                    <path d="M3 17a9 9 0 019-9 9 9 0 016 2.3l3 2.7"></path>
+                                </svg>
                             </button>
                         </div>
-                        <pre class="code-block"><code id="arduinoCode">// Upload an image to generate code</code></pre>
-                    </div>
-
-                    <div class="tab-panel" id="rawPanel">
-                        <div class="code-header">
-                            <span class="code-language">Hex Data</span>
-                            <button class="copy-btn" id="copyRaw">
+                        <div class="toolbar-group">
+                            <button class="toolbar-btn" id="zoomOutBtn" title="Zoom Out">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                                    <circle cx="11" cy="11" r="8"></circle>
+                                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                                    <line x1="8" y1="11" x2="14" y2="11"></line>
                                 </svg>
-                                Copy
+                            </button>
+                            <span class="zoom-level" id="zoomLevel">100%</span>
+                            <button class="toolbar-btn" id="zoomInBtn" title="Zoom In">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="11" cy="11" r="8"></circle>
+                                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                                    <line x1="11" y1="8" x2="11" y2="14"></line>
+                                    <line x1="8" y1="11" x2="14" y2="11"></line>
+                                </svg>
                             </button>
                         </div>
-                        <pre class="code-block"><code id="rawCode">// Upload an image to generate data</code></pre>
+                        <div class="toolbar-group">
+                            <button class="toolbar-btn" id="gridToggle" title="Toggle Grid">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                                    <line x1="3" y1="9" x2="21" y2="9"></line>
+                                    <line x1="3" y1="15" x2="21" y2="15"></line>
+                                    <line x1="9" y1="3" x2="9" y2="21"></line>
+                                    <line x1="15" y1="3" x2="15" y2="21"></line>
+                                </svg>
+                            </button>
+                            <button class="toolbar-btn danger" id="clearCanvasBtn" title="Clear Canvas">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="3 6 5 6 21 6"></polyline>
+                                    <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2">
+                                    </path>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="canvas-wrapper" id="canvasWrapper">
+                        <div class="watchy-display" id="watchyDisplay">
+                            <canvas id="designCanvas" width="200" height="200"></canvas>
+                            <div class="canvas-elements" id="canvasElements"></div>
+                            <div class="grid-overlay" id="gridOverlay"></div>
+                        </div>
+                    </div>
+
+                    <div class="canvas-info">
+                        <span class="dimension-info">200 × 200px</span>
+                        <span class="color-info">1-bit E-Ink</span>
+                    </div>
+                </section>
+
+                <!-- Right Panel - Properties -->
+                <aside class="properties-panel">
+                    <div class="panel-section" id="noSelectionPanel">
+                        <div class="empty-state">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"></path>
+                                <path d="M13 13l6 6"></path>
+                            </svg>
+                            <p>Select an element or drag a widget to the canvas</p>
+                        </div>
+                    </div>
+
+                    <div class="panel-section hidden" id="elementProperties">
+                        <h3>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="3"></circle>
+                                <path
+                                    d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z">
+                                </path>
+                            </svg>
+                            Properties
+                        </h3>
+
+                        <div class="property-group">
+                            <label>Position</label>
+                            <div class="property-row">
+                                <div class="property-input">
+                                    <span>X</span>
+                                    <input type="number" id="propX" min="0" max="200">
+                                </div>
+                                <div class="property-input">
+                                    <span>Y</span>
+                                    <input type="number" id="propY" min="0" max="200">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="property-group">
+                            <label>Size</label>
+                            <div class="property-row">
+                                <div class="property-input">
+                                    <span>W</span>
+                                    <input type="number" id="propWidth" min="1" max="200">
+                                </div>
+                                <div class="property-input">
+                                    <span>H</span>
+                                    <input type="number" id="propHeight" min="1" max="200">
+                                </div>
+                            </div>
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="propLockRatio" checked>
+                                <span>Lock aspect ratio</span>
+                            </label>
+                        </div>
+
+                        <div class="property-group hidden" id="imagePropertiesGroup">
+                            <label>Image Actions</label>
+                            <button class="btn btn-sm btn-secondary" id="fillScreenBtn"
+                                style="width: 100%; justify-content: center;">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"></path>
+                                </svg>
+                                Fill Screen (200x200)
+                            </button>
+                        </div>
+
+                        <div class="property-group" id="textPropertiesGroup">
+                            <label>Text Content</label>
+                            <input type="text" id="propTextContent" placeholder="Enter text...">
+                        </div>
+
+                        <div class="property-group" id="fontPropertiesGroup">
+                            <label>Font Size</label>
+                            <div class="range-container">
+                                <input type="range" id="propFontSize" min="8" max="72" value="24">
+                                <span id="propFontSizeValue">24px</span>
+                            </div>
+                        </div>
+
+                        <div class="property-group">
+                            <label>Color</label>
+                            <div class="color-options">
+                                <button class="color-btn active" data-color="black" title="Black">
+                                    <span style="background: #000"></span>
+                                </button>
+                                <button class="color-btn" data-color="white" title="White">
+                                    <span style="background: #fff; border: 1px solid #ccc"></span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="property-group" id="strokePropertiesGroup">
+                            <label>Stroke Width</label>
+                            <div class="range-container">
+                                <input type="range" id="propStrokeWidth" min="1" max="10" value="2">
+                                <span id="propStrokeWidthValue">2px</span>
+                            </div>
+                        </div>
+
+                        <div class="property-actions">
+                            <button class="btn btn-sm btn-secondary" id="duplicateBtn">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                    <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"></path>
+                                </svg>
+                                Duplicate
+                            </button>
+                            <button class="btn btn-sm btn-danger" id="deleteBtn">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="3 6 5 6 21 6"></polyline>
+                                    <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2">
+                                    </path>
+                                </svg>
+                                Delete
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="panel-section">
+                        <h3>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+                                <polyline points="2 17 12 22 22 17"></polyline>
+                                <polyline points="2 12 12 17 22 12"></polyline>
+                            </svg>
+                            Layers
+                        </h3>
+                        <div class="layers-list" id="layersList">
+                            <div class="empty-layers">No elements yet</div>
+                        </div>
+                        <div class="layer-actions">
+                            <button class="layer-btn" id="layerUpBtn" title="Move Up">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="18 15 12 9 6 15"></polyline>
+                                </svg>
+                            </button>
+                            <button class="layer-btn" id="layerDownBtn" title="Move Down">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="6 9 12 15 18 9"></polyline>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                </aside>
+            </div>
+
+            <!-- Export Section -->
+            <section class="export-section">
+                <h3>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                    Export Watchface
+                </h3>
+                <div class="export-options">
+                    <div class="export-preview">
+                        <div class="watchy-export-frame">
+                            <canvas id="exportPreviewCanvas" width="200" height="200"></canvas>
+                        </div>
+                        <span class="export-info">Final 1-bit preview</span>
+                    </div>
+                    <div class="export-settings">
+                        <div class="setting-item">
+                            <label for="exportName">Watchface Name</label>
+                            <input type="text" id="exportName" placeholder="my_watchface" pattern="[a-z_][a-z0-9_]*"
+                                title="Use lowercase letters, numbers, and underscores only">
+                        </div>
+                        <div class="setting-item">
+                            <label for="ditherMethod">Dithering Method</label>
+                            <select id="ditherMethod">
+                                <option value="floyd-steinberg">Floyd-Steinberg (Best)</option>
+                                <option value="atkinson">Atkinson</option>
+                                <option value="ordered">Ordered (Bayer)</option>
+                                <option value="none">No Dithering</option>
+                            </select>
+                        </div>
+                        <div class="setting-item">
+                            <label for="threshold">Threshold</label>
+                            <div class="range-container">
+                                <input type="range" id="threshold" min="0" max="255" value="128">
+                                <span id="thresholdValue">128</span>
+                            </div>
+                        </div>
+                        <div class="setting-item toggle-row">
+                            <span class="setting-label">Invert Colors</span>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="invertColors">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
                     </div>
                 </div>
-
-                <div class="action-buttons">
-                    <button class="btn btn-primary" id="downloadBtn">
+                <div class="export-actions">
+                    <button class="btn btn-primary" id="generateCodeBtn">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                            <polyline points="7 10 12 15 17 10" />
-                            <line x1="12" y1="15" x2="12" y2="3" />
+                            <polyline points="16 18 22 12 16 6"></polyline>
+                            <polyline points="8 6 2 12 8 18"></polyline>
                         </svg>
-                        Download .h File
+                        Generate Arduino Code
                     </button>
                     <button class="btn btn-secondary" id="downloadPngBtn">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                            <circle cx="8.5" cy="8.5" r="1.5" />
-                            <polyline points="21 15 16 10 5 21" />
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                            <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                            <polyline points="21 15 16 10 5 21"></polyline>
                         </svg>
                         Download PNG
+                    </button>
+                    <button class="btn btn-aqua" id="saveProjectBtn">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"></path>
+                            <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                            <polyline points="7 3 7 8 15 8"></polyline>
+                        </svg>
+                        Save Project
                     </button>
                 </div>
             </section>
 
-            <!-- Divider -->
-            <div class="section-divider">
-                <span>or</span>
+            <!-- Code Output Modal -->
+            <div class="modal" id="codeModal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>Generated Arduino Code</h3>
+                        <button class="modal-close" id="closeModal">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="18" y1="6" x2="6" y2="18"></line>
+                                <line x1="6" y1="6" x2="18" y2="18"></line>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="code-tabs">
+                            <button class="code-tab active" data-tab="arduino">Arduino Code</button>
+                            <button class="code-tab" data-tab="raw">Raw Hex</button>
+                        </div>
+                        <div class="code-panel active" id="arduinoCodePanel">
+                            <div class="code-header">
+                                <span class="code-language">C++ / Arduino</span>
+                                <button class="copy-btn" id="copyArduino">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                        <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"></path>
+                                    </svg>
+                                    Copy
+                                </button>
+                            </div>
+                            <pre class="code-block"><code id="arduinoCode">// Generate code to see output</code></pre>
+                        </div>
+                        <div class="code-panel" id="rawCodePanel">
+                            <div class="code-header">
+                                <span class="code-language">Hex Data</span>
+                                <button class="copy-btn" id="copyRaw">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                        <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"></path>
+                                    </svg>
+                                    Copy
+                                </button>
+                            </div>
+                            <pre class="code-block"><code id="rawCode">// Generate code to see output</code></pre>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-primary" id="downloadHeaderBtn">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"></path>
+                                <polyline points="7 10 12 15 17 10"></polyline>
+                                <line x1="12" y1="15" x2="12" y2="3"></line>
+                            </svg>
+                            Download .h File
+                        </button>
+                    </div>
+                </div>
             </div>
-
-            <!-- Code to Preview Section -->
-            <section class="code-input-section">
-                <h3>
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polyline points="16 18 22 12 16 6" />
-                        <polyline points="8 6 2 12 8 18" />
-                    </svg>
-                    Paste Code to Preview
-                </h3>
-                <div class="code-input-wrapper">
-                    <textarea id="codeInput"
-                        placeholder="Paste your Arduino bitmap code here...&#10;&#10;Example:&#10;const unsigned char my_image[] PROGMEM = {&#10;  0xff, 0xff, 0xff, ...&#10;};"></textarea>
-                    <div class="code-input-actions">
-                        <button class="btn btn-aqua" id="parseCodeBtn">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <polygon points="5 3 19 12 5 21 5 3" />
-                            </svg>
-                            Generate Preview
-                        </button>
-                        <button class="btn btn-secondary" id="clearCodeBtn">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <line x1="18" y1="6" x2="6" y2="18" />
-                                <line x1="6" y1="6" x2="18" y2="18" />
-                            </svg>
-                            Clear
-                        </button>
-                    </div>
-                    <div class="error-message" id="parseError"></div>
-                </div>
-            </section>
-
-            <!-- Code Preview Result -->
-            <section class="code-preview-section" id="codePreviewSection">
-                <div class="code-preview-container">
-                    <div class="code-preview-frame">
-                        <canvas id="codePreviewCanvas" width="200" height="200"></canvas>
-                    </div>
-                    <div class="code-preview-info">
-                        <div class="image-name" id="parsedImageName">-</div>
-                        <div class="image-size">200 × 200px • 1-bit</div>
-                    </div>
-                    <div class="action-buttons">
-                        <button class="btn btn-secondary" id="downloadParsedPngBtn">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                                <circle cx="8.5" cy="8.5" r="1.5" />
-                                <polyline points="21 15 16 10 5 21" />
-                            </svg>
-                            Download as PNG
-                        </button>
-                    </div>
-                </div>
-            </section>
         </main>
 
         <!-- Footer -->
