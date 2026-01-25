@@ -884,6 +884,40 @@ body {
     text-align: right;
 }
 
+/* Typeable number input for ranges */
+.range-number-input {
+    width: 50px;
+    padding: 0.3rem 0.4rem;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    text-align: center;
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
+
+.range-number-input::-webkit-outer-spin-button,
+.range-number-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.range-number-input:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 2px var(--accent-glow);
+}
+
+.range-unit {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    min-width: auto;
+}
+
 /* Property Actions */
 .property-actions {
     display: flex;
@@ -1788,9 +1822,11 @@ body {
     0% {
         box-shadow: 0 0 0 0 rgba(184, 187, 38, 0.4);
     }
+
     70% {
         box-shadow: 0 0 0 10px rgba(184, 187, 38, 0);
     }
+
     100% {
         box-shadow: 0 0 0 0 rgba(184, 187, 38, 0);
     }

@@ -19,6 +19,7 @@ class WatchfaceDesigner {
 
         this.elements = [];
         this.selectedElement = null;
+        this.selectedElements = []; // For multi-selection with Shift key
         this.activeTool = 'select'; // 'select', 'brush', 'eraser'
         this.isDrawing = false;
         this.currentPath = null;
@@ -123,8 +124,15 @@ class WatchfaceDesigner {
         document.getElementById('propHeight').addEventListener('input', (e) => this.updateElementProperty('height', parseInt(e.target.value) || 1));
         document.getElementById('propTextContent').addEventListener('input', (e) => this.updateElementProperty('text', e.target.value));
         document.getElementById('propFontSize').addEventListener('input', (e) => {
-            document.getElementById('propFontSizeValue').textContent = e.target.value + 'px';
-            this.updateElementProperty('fontSize', parseInt(e.target.value));
+            const value = parseInt(e.target.value);
+            document.getElementById('propFontSizeInput').value = value;
+            this.updateElementProperty('fontSize', value);
+        });
+        document.getElementById('propFontSizeInput').addEventListener('input', (e) => {
+            let value = parseInt(e.target.value) || 8;
+            value = Math.max(1, Math.min(200, value)); // Allow 1-200 for typed values
+            document.getElementById('propFontSize').value = Math.min(value, 72); // Slider max is 72
+            this.updateElementProperty('fontSize', value);
         });
         document.getElementById('propStrokeWidth').addEventListener('input', (e) => {
             document.getElementById('propStrokeWidthValue').textContent = e.target.value + 'px';
@@ -505,11 +513,11 @@ class WatchfaceDesigner {
         // Add visual content
         div.appendChild(this.createElementContent(element));
 
-        // Event listeners
+        // Event listeners - selection is handled in mousedown, click only stops propagation
         div.addEventListener('mousedown', (e) => this.handleElementMouseDown(e, element));
         div.addEventListener('click', (e) => {
             e.stopPropagation();
-            this.selectElement(element);
+            // Selection is handled in mousedown to preserve Shift state
         });
 
         this.elementsContainer.appendChild(div);
@@ -644,7 +652,16 @@ class WatchfaceDesigner {
             this.isDragging = true;
         }
 
-        this.selectElement(element);
+        // If shift is held, use multi-selection; otherwise, only change selection if element is not already selected
+        const isAlreadySelected = this.selectedElements.some(el => el.id === element.id);
+        if (e.shiftKey) {
+            this.selectElement(element, true);
+        } else if (!isAlreadySelected) {
+            this.selectElement(element, false);
+        } else {
+            // Element is already selected and shift is not held - make it the primary
+            this.selectedElement = element;
+        }
 
         const rect = e.target.closest('.canvas-element').getBoundingClientRect();
         // Divide by zoom because getBoundingClientRect returns scaled coordinates
@@ -656,7 +673,13 @@ class WatchfaceDesigner {
             startWidth: element.width,
             startHeight: element.height,
             mouseStartX: e.clientX,
-            mouseStartY: e.clientY
+            mouseStartY: e.clientY,
+            // Store initial positions for all selected elements (for group dragging)
+            elementStarts: this.selectedElements.map(el => ({
+                id: el.id,
+                startX: el.x,
+                startY: el.y
+            }))
         };
 
         const moveHandler = (e) => this.handleMouseMove(e);
@@ -718,36 +741,71 @@ class WatchfaceDesigner {
             this.selectedElement.y = Math.max(0, Math.min(newY, this.HEIGHT - newHeight));
             this.selectedElement.width = Math.round(newWidth);
             this.selectedElement.height = Math.round(newHeight);
+            this.updateElementDOM(this.selectedElement);
         } else if (this.isDragging) {
-            const x = (e.clientX - containerRect.left) / this.zoom - this.dragOffset.x;
-            const y = (e.clientY - containerRect.top) / this.zoom - this.dragOffset.y;
+            // Calculate delta movement from mouse start position
+            const dx = (e.clientX - this.dragOffset.mouseStartX) / this.zoom;
+            const dy = (e.clientY - this.dragOffset.mouseStartY) / this.zoom;
 
-            // Allow dragging even for elements larger than canvas
-            const minX = Math.min(0, this.WIDTH - this.selectedElement.width);
-            const maxX = Math.max(0, this.WIDTH - this.selectedElement.width);
-            const minY = Math.min(0, this.HEIGHT - this.selectedElement.height);
-            const maxY = Math.max(0, this.HEIGHT - this.selectedElement.height);
+            // Move all selected elements by the same delta
+            this.selectedElements.forEach(element => {
+                const startPos = this.dragOffset.elementStarts.find(es => es.id === element.id);
+                if (startPos) {
+                    // Calculate new position based on original start + delta
+                    const newX = startPos.startX + dx;
+                    const newY = startPos.startY + dy;
 
-            this.selectedElement.x = Math.max(minX, Math.min(Math.round(x), maxX));
-            this.selectedElement.y = Math.max(minY, Math.min(Math.round(y), maxY));
+                    // Clamp to canvas bounds
+                    const minX = Math.min(0, this.WIDTH - element.width);
+                    const maxX = Math.max(0, this.WIDTH - element.width);
+                    const minY = Math.min(0, this.HEIGHT - element.height);
+                    const maxY = Math.max(0, this.HEIGHT - element.height);
+
+                    element.x = Math.max(minX, Math.min(Math.round(newX), maxX));
+                    element.y = Math.max(minY, Math.min(Math.round(newY), maxY));
+
+                    this.updateElementDOM(element);
+                }
+            });
         }
 
-        this.updateElementDOM(this.selectedElement);
         this.updatePropertyPanel();
         this.renderCanvas();
     }
 
-    selectElement(element) {
-        this.selectedElement = element;
+    selectElement(element, addToSelection = false) {
+        if (addToSelection && element) {
+            // Multi-selection mode (Shift key held)
+            const index = this.selectedElements.findIndex(el => el.id === element.id);
+            if (index !== -1) {
+                // Element already selected, remove it
+                this.selectedElements.splice(index, 1);
+                const div = this.elementsContainer.querySelector(`[data-id="${element.id}"]`);
+                if (div) div.classList.remove('selected');
+            } else {
+                // Add element to selection
+                this.selectedElements.push(element);
+                const div = this.elementsContainer.querySelector(`[data-id="${element.id}"]`);
+                if (div) div.classList.add('selected');
+            }
+            // Set primary selected element to the last one in the array
+            this.selectedElement = this.selectedElements.length > 0
+                ? this.selectedElements[this.selectedElements.length - 1]
+                : null;
+        } else {
+            // Single selection mode (clear previous selection)
+            this.selectedElement = element;
+            this.selectedElements = element ? [element] : [];
 
-        // Update DOM selection
-        this.elementsContainer.querySelectorAll('.canvas-element').forEach(el => {
-            el.classList.remove('selected');
-        });
+            // Update DOM selection
+            this.elementsContainer.querySelectorAll('.canvas-element').forEach(el => {
+                el.classList.remove('selected');
+            });
 
-        if (element) {
-            const div = this.elementsContainer.querySelector(`[data-id="${element.id}"]`);
-            if (div) div.classList.add('selected');
+            if (element) {
+                const div = this.elementsContainer.querySelector(`[data-id="${element.id}"]`);
+                if (div) div.classList.add('selected');
+            }
         }
 
         this.updatePropertyPanel();
@@ -778,7 +836,12 @@ class WatchfaceDesigner {
             return;
         }
 
-        elementProperties.querySelector('h3').textContent = 'Properties';
+        // Show multi-selection info in header
+        if (this.selectedElements.length > 1) {
+            elementProperties.querySelector('h3').textContent = `Properties (${this.selectedElements.length} selected)`;
+        } else {
+            elementProperties.querySelector('h3').textContent = 'Properties';
+        }
         noSelectionPanel.classList.add('hidden');
         elementProperties.classList.remove('hidden');
         document.querySelectorAll('.property-group').forEach(pg => {
@@ -799,8 +862,9 @@ class WatchfaceDesigner {
         if (hasText) {
             document.getElementById('propTextContent').value = this.selectedElement.text || '';
             document.getElementById('propFontFamily').value = this.selectedElement.fontFamily || "'JetBrains Mono', monospace";
-            document.getElementById('propFontSize').value = this.selectedElement.fontSize || 16;
-            document.getElementById('propFontSizeValue').textContent = (this.selectedElement.fontSize || 16) + 'px';
+            const fontSize = this.selectedElement.fontSize || 16;
+            document.getElementById('propFontSize').value = Math.min(fontSize, 72);
+            document.getElementById('propFontSizeInput').value = fontSize;
         }
 
         // Show/hide stroke properties
@@ -835,11 +899,28 @@ class WatchfaceDesigner {
     }
 
     updateElementProperty(prop, value) {
-        if (!this.selectedElement) return;
+        if (this.selectedElements.length === 0) return;
         this.saveState();
 
-        this.selectedElement[prop] = value;
-        this.updateElementDOM(this.selectedElement);
+        // Apply property to all selected elements
+        this.selectedElements.forEach(element => {
+            // Only apply if the property makes sense for this element type
+            const hasText = ['digital-clock', 'date', 'day-of-week', 'weather-temp', 'weather-condition', 'weather-hi-lo', 'steps', 'text'].includes(element.type);
+            const hasStroke = ['rectangle', 'circle', 'line'].includes(element.type);
+
+            // Skip text-specific properties for non-text elements
+            if ((prop === 'text' || prop === 'fontSize' || prop === 'fontFamily') && !hasText) {
+                return;
+            }
+            // Skip stroke-specific properties for non-stroke elements
+            if (prop === 'strokeWidth' && !hasStroke && element.type !== 'drawing') {
+                return;
+            }
+
+            element[prop] = value;
+            this.updateElementDOM(element);
+        });
+
         this.renderCanvas();
         this.updateExportPreview();
     }
@@ -860,32 +941,52 @@ class WatchfaceDesigner {
     }
 
     duplicateSelected() {
-        if (!this.selectedElement) return;
+        if (this.selectedElements.length === 0) return;
         this.saveState();
 
-        const newElement = { ...this.selectedElement };
-        newElement.id = ++this.elementIdCounter;
-        newElement.x = Math.min(newElement.x + 10, this.WIDTH - newElement.width);
-        newElement.y = Math.min(newElement.y + 10, this.HEIGHT - newElement.height);
+        const newElements = [];
+        this.selectedElements.forEach(element => {
+            const newElement = { ...element };
+            newElement.id = ++this.elementIdCounter;
+            newElement.x = Math.min(newElement.x + 10, this.WIDTH - newElement.width);
+            newElement.y = Math.min(newElement.y + 10, this.HEIGHT - newElement.height);
 
-        this.elements.push(newElement);
-        this.createElementDOM(newElement);
-        this.selectElement(newElement);
+            this.elements.push(newElement);
+            this.createElementDOM(newElement);
+            newElements.push(newElement);
+        });
+
+        // Select all duplicated elements
+        this.selectedElements = newElements;
+        this.selectedElement = newElements[newElements.length - 1];
+
+        // Update DOM selection
+        this.elementsContainer.querySelectorAll('.canvas-element').forEach(el => {
+            el.classList.remove('selected');
+        });
+        newElements.forEach(el => {
+            const div = this.elementsContainer.querySelector(`[data-id="${el.id}"]`);
+            if (div) div.classList.add('selected');
+        });
+
         this.updateLayers();
         this.renderCanvas();
         this.updateExportPreview();
     }
 
     deleteSelected() {
-        if (!this.selectedElement) return;
+        if (this.selectedElements.length === 0) return;
         this.saveState();
 
-        const index = this.elements.findIndex(el => el.id === this.selectedElement.id);
-        if (index !== -1) {
-            this.elements.splice(index, 1);
-            const div = this.elementsContainer.querySelector(`[data-id="${this.selectedElement.id}"]`);
-            if (div) div.remove();
-        }
+        // Delete all selected elements
+        this.selectedElements.forEach(element => {
+            const index = this.elements.findIndex(el => el.id === element.id);
+            if (index !== -1) {
+                this.elements.splice(index, 1);
+                const div = this.elementsContainer.querySelector(`[data-id="${element.id}"]`);
+                if (div) div.remove();
+            }
+        });
 
         this.selectElement(null);
         this.updateLayers();
@@ -907,7 +1008,8 @@ class WatchfaceDesigner {
         // Show in reverse order (top layer first)
         [...this.elements].reverse().forEach(element => {
             const layerItem = document.createElement('div');
-            layerItem.className = 'layer-item' + (this.selectedElement?.id === element.id ? ' active' : '');
+            const isSelected = this.selectedElements.some(el => el.id === element.id);
+            layerItem.className = 'layer-item' + (isSelected ? ' active' : '');
             layerItem.dataset.id = element.id;
 
             let iconSvg = '';
@@ -947,7 +1049,7 @@ class WatchfaceDesigner {
             layerItem.addEventListener('click', (e) => {
                 if (!e.target.closest('.layer-visibility')) {
                     const el = this.elements.find(el => el.id === element.id);
-                    this.selectElement(el);
+                    this.selectElement(el, e.shiftKey);
                 }
             });
 
@@ -2711,26 +2813,54 @@ Watchface Designer and select this .zip file.
             this.setActiveTool('brush');
         } else if (e.key === 'e') {
             this.setActiveTool('eraser');
-        } else if (this.selectedElement && !e.ctrlKey && !e.metaKey) {
-            // Arrow key movement
+        } else if (this.selectedElements.length > 0 && !e.ctrlKey && !e.metaKey) {
+            // Arrow key movement for all selected elements
             const step = e.shiftKey ? 10 : 1;
+            let moved = false;
+
             switch (e.key) {
                 case 'ArrowUp':
                     e.preventDefault();
-                    this.updateElementProperty('y', Math.max(0, this.selectedElement.y - step));
+                    this.saveState();
+                    this.selectedElements.forEach(element => {
+                        element.y = Math.max(0, element.y - step);
+                        this.updateElementDOM(element);
+                    });
+                    moved = true;
                     break;
                 case 'ArrowDown':
                     e.preventDefault();
-                    this.updateElementProperty('y', Math.min(this.HEIGHT - this.selectedElement.height, this.selectedElement.y + step));
+                    this.saveState();
+                    this.selectedElements.forEach(element => {
+                        element.y = Math.min(this.HEIGHT - element.height, element.y + step);
+                        this.updateElementDOM(element);
+                    });
+                    moved = true;
                     break;
                 case 'ArrowLeft':
                     e.preventDefault();
-                    this.updateElementProperty('x', Math.max(0, this.selectedElement.x - step));
+                    this.saveState();
+                    this.selectedElements.forEach(element => {
+                        element.x = Math.max(0, element.x - step);
+                        this.updateElementDOM(element);
+                    });
+                    moved = true;
                     break;
                 case 'ArrowRight':
                     e.preventDefault();
-                    this.updateElementProperty('x', Math.min(this.WIDTH - this.selectedElement.width, this.selectedElement.x + step));
+                    this.saveState();
+                    this.selectedElements.forEach(element => {
+                        element.x = Math.min(this.WIDTH - element.width, element.x + step);
+                        this.updateElementDOM(element);
+                    });
+                    moved = true;
                     break;
+            }
+
+            if (moved) {
+                this.updatePropertyPanel();
+                this.renderCanvas();
+                this.updateExportPreview();
             }
         }
     }

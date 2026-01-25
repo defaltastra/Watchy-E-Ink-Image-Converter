@@ -24,14 +24,22 @@ A **Canva-like** web tool for designing custom watchfaces for the [Watchy](https
 - **Position (X, Y)** - Precise pixel positioning
 - **Size (Width, Height)** - Resize any element
 - **Lock aspect ratio** - Maintain proportions while resizing
-- **Font size** - Adjust text size (8-72px)
+- **Font size** - Type or slide to adjust text size (1-200px)
 - **Stroke width** - Customize shape borders
 - **Color** - Black or white (1-bit e-ink)
+
+### 🔲 Multi-Selection
+- **Shift+Click** - Select multiple elements
+- **Group dragging** - Drag multiple elements together
+- **Bulk property changes** - Change font, color, size for all selected elements
+- **Bulk operations** - Duplicate or delete multiple elements at once
+- **Arrow key movement** - Move all selected elements with keyboard
+- **Visual feedback** - All selected elements highlighted in canvas and layers
 
 ### 📚 Layers System
 - **Layer ordering** - Move elements up/down
 - **Visibility toggle** - Show/hide elements
-- **Element selection** - Click to select from layer list
+- **Element selection** - Click to select, Shift+click for multi-select
 
 ### 🔄 Undo/Redo
 - Full history support with keyboard shortcuts
@@ -93,6 +101,7 @@ A **Canva-like** web tool for designing custom watchfaces for the [Watchy](https
 | `Ctrl+G` | Toggle grid |
 | `Arrow keys` | Move selected element (1px) |
 | `Shift+Arrow` | Move selected element (10px) |
+| `Shift+Click` | Add/remove element from selection |
 | `Escape` | Deselect / Close modal |
 
 ## 🛠️ Tech Stack
