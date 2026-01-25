@@ -12,6 +12,7 @@
         href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 </head>
 
 <body>
@@ -556,6 +557,15 @@
                         </svg>
                         Save Project
                     </button>
+                    <button class="btn btn-secondary" id="importProjectBtn">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2v11z"></path>
+                            <polyline points="12 11 12 17"></polyline>
+                            <polyline points="9 14 12 11 15 14"></polyline>
+                        </svg>
+                        Import Project
+                    </button>
+                    <input type="file" id="projectImportInput" accept=".zip" hidden>
                 </div>
             </section>
 
@@ -573,13 +583,17 @@
                     </div>
                     <div class="modal-body">
                         <div class="code-tabs">
-                            <button class="code-tab active" data-tab="arduino">Arduino Code</button>
+                            <button class="code-tab active" data-tab="ino">.ino</button>
+                            <button class="code-tab" data-tab="h">.h</button>
+                            <button class="code-tab" data-tab="cpp">.cpp</button>
+                            <button class="code-tab" data-tab="bitmaps">bitmaps.h</button>
+                            <button class="code-tab" data-tab="settings">settings.h</button>
                             <button class="code-tab" data-tab="raw">Raw Hex</button>
                         </div>
-                        <div class="code-panel active" id="arduinoCodePanel">
+                        <div class="code-panel active" id="inoCodePanel">
                             <div class="code-header">
-                                <span class="code-language">C++ / Arduino</span>
-                                <button class="copy-btn" id="copyArduino">
+                                <span class="code-language">Arduino Sketch (.ino)</span>
+                                <button class="copy-btn" id="copyIno">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                         <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
                                         <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"></path>
@@ -587,7 +601,59 @@
                                     Copy
                                 </button>
                             </div>
-                            <pre class="code-block"><code id="arduinoCode">// Generate code to see output</code></pre>
+                            <pre class="code-block"><code id="inoCode">// Generate code to see output</code></pre>
+                        </div>
+                        <div class="code-panel" id="hCodePanel">
+                            <div class="code-header">
+                                <span class="code-language">Header File (.h)</span>
+                                <button class="copy-btn" id="copyH">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                        <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"></path>
+                                    </svg>
+                                    Copy
+                                </button>
+                            </div>
+                            <pre class="code-block"><code id="hCode">// Generate code to see output</code></pre>
+                        </div>
+                        <div class="code-panel" id="cppCodePanel">
+                            <div class="code-header">
+                                <span class="code-language">Source File (.cpp)</span>
+                                <button class="copy-btn" id="copyCpp">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                        <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"></path>
+                                    </svg>
+                                    Copy
+                                </button>
+                            </div>
+                            <pre class="code-block"><code id="cppCode">// Generate code to see output</code></pre>
+                        </div>
+                        <div class="code-panel" id="bitmapsCodePanel">
+                            <div class="code-header">
+                                <span class="code-language">Bitmaps (bitmaps.h)</span>
+                                <button class="copy-btn" id="copyBitmaps">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                        <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"></path>
+                                    </svg>
+                                    Copy
+                                </button>
+                            </div>
+                            <pre class="code-block"><code id="bitmapsCode">// Generate code to see output</code></pre>
+                        </div>
+                        <div class="code-panel" id="settingsCodePanel">
+                            <div class="code-header">
+                                <span class="code-language">Settings (settings.h)</span>
+                                <button class="copy-btn" id="copySettings">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                        <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"></path>
+                                    </svg>
+                                    Copy
+                                </button>
+                            </div>
+                            <pre class="code-block"><code id="settingsCode">// Generate code to see output</code></pre>
                         </div>
                         <div class="code-panel" id="rawCodePanel">
                             <div class="code-header">
@@ -610,7 +676,7 @@
                                 <polyline points="7 10 12 15 17 10"></polyline>
                                 <line x1="12" y1="15" x2="12" y2="3"></line>
                             </svg>
-                            Download .h File
+                            Download Active File
                         </button>
                     </div>
                 </div>
