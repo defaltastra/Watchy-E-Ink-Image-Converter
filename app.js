@@ -233,6 +233,18 @@ class WatchfaceDesigner {
 
         // Window resize
         window.addEventListener('resize', () => this.updateLayout());
+
+        // Code Preview events
+        document.getElementById('toggleCodePreview').addEventListener('click', () => this.toggleCodePreviewSection());
+        document.getElementById('previewCodeBtn').addEventListener('click', () => this.previewBitmapCode());
+        document.getElementById('addToCanvasBtn').addEventListener('click', () => this.addBitmapToCanvas());
+        document.getElementById('clearCodeBtn').addEventListener('click', () => this.clearCodePreview());
+        document.getElementById('bitmapCodeInput').addEventListener('input', () => this.detectBitmapDimensions());
+        document.getElementById('previewAutoSize').addEventListener('change', (e) => {
+            const inputs = document.querySelectorAll('.dimension-input-group input');
+            inputs.forEach(input => input.disabled = e.target.checked);
+            if (e.target.checked) this.detectBitmapDimensions();
+        });
     }
 
     setActiveTool(tool) {
@@ -2303,6 +2315,370 @@ Watchface Designer and select this .zip file.
             console.error('Error importing project:', error);
             alert('Error importing project: ' + error.message);
         }
+    }
+
+    // ===== Code Preview Methods =====
+    toggleCodePreviewSection() {
+        const btn = document.getElementById('toggleCodePreview');
+        const content = document.getElementById('codePreviewContent');
+        btn.classList.toggle('collapsed');
+        content.classList.toggle('collapsed');
+    }
+
+    parseBitmapCode(code) {
+        // Extract hex values from various C++ bitmap array formats
+        const bytes = [];
+
+        // Remove comments
+        code = code.replace(/\/\/.*$/gm, '');
+        code = code.replace(/\/\*[\s\S]*?\*\//g, '');
+
+        // Find array content between { and }
+        const arrayMatch = code.match(/\{([^}]+)\}/);
+        if (!arrayMatch) {
+            return { success: false, error: 'No array found. Make sure code contains { ... }' };
+        }
+
+        const arrayContent = arrayMatch[1];
+
+        // Match hex values (0xFF, 0xff), binary values (0b10101010), and decimal values
+        const hexPattern = /0x([0-9a-fA-F]{1,2})/g;
+        const binaryPattern = /0b([01]{8})/g;
+        const decimalPattern = /\b(\d{1,3})\b/g;
+
+        let match;
+
+        // First try hex values
+        while ((match = hexPattern.exec(arrayContent)) !== null) {
+            bytes.push(parseInt(match[1], 16));
+        }
+
+        // If no hex, try binary
+        if (bytes.length === 0) {
+            while ((match = binaryPattern.exec(arrayContent)) !== null) {
+                bytes.push(parseInt(match[1], 2));
+            }
+        }
+
+        // If still nothing, try decimal (only values 0-255)
+        if (bytes.length === 0) {
+            while ((match = decimalPattern.exec(arrayContent)) !== null) {
+                const val = parseInt(match[1], 10);
+                if (val >= 0 && val <= 255) {
+                    bytes.push(val);
+                }
+            }
+        }
+
+        if (bytes.length === 0) {
+            return { success: false, error: 'No valid byte values found' };
+        }
+
+        return { success: true, bytes };
+    }
+
+    detectBitmapDimensions() {
+        const code = document.getElementById('bitmapCodeInput').value;
+        const dimSpan = document.getElementById('detectedDimensions');
+
+        if (!code.trim()) {
+            dimSpan.textContent = 'Auto-detect dimensions';
+            dimSpan.className = '';
+            return;
+        }
+
+        const result = this.parseBitmapCode(code);
+
+        if (!result.success) {
+            dimSpan.textContent = result.error;
+            dimSpan.className = 'error';
+            return;
+        }
+
+        const totalBytes = result.bytes.length;
+        const totalBits = totalBytes * 8;
+
+        // Try to detect dimensions from common patterns
+        let detectedWidth = 200;
+        let detectedHeight = 200;
+
+        // Try common Watchy dimensions first
+        const commonSizes = [
+            { w: 200, h: 200 }, // Full screen
+            { w: 128, h: 128 },
+            { w: 64, h: 64 },
+            { w: 32, h: 32 },
+            { w: 16, h: 16 },
+            { w: 48, h: 48 },
+            { w: 24, h: 24 },
+            { w: 100, h: 100 },
+        ];
+
+        // For 1-bit images, each byte = 8 pixels
+        // Look for width/height comments in code
+        const widthMatch = code.match(/width\s*[:=]\s*(\d+)/i) || code.match(/(\d+)\s*x\s*\d+/i);
+        const heightMatch = code.match(/height\s*[:=]\s*(\d+)/i) || code.match(/\d+\s*x\s*(\d+)/i);
+
+        if (widthMatch && heightMatch) {
+            detectedWidth = parseInt(widthMatch[1], 10);
+            detectedHeight = parseInt(heightMatch[1], 10);
+        } else {
+            // Try to find matching dimensions from common sizes
+            for (const size of commonSizes) {
+                const expectedBytes = (size.w * size.h) / 8;
+                if (totalBytes === expectedBytes) {
+                    detectedWidth = size.w;
+                    detectedHeight = size.h;
+                    break;
+                }
+            }
+
+            // If no exact match, calculate from byte count
+            if (totalBits >= 40000) { // 200x200
+                detectedWidth = 200;
+                detectedHeight = 200;
+            } else {
+                // Try to find square dimensions
+                const side = Math.sqrt(totalBits);
+                if (Number.isInteger(side)) {
+                    detectedWidth = side;
+                    detectedHeight = side;
+                }
+            }
+        }
+
+        dimSpan.textContent = `Detected: ${detectedWidth}×${detectedHeight} (${totalBytes} bytes)`;
+        dimSpan.className = 'detected';
+
+        // Update dimension inputs if auto-detect is enabled
+        if (document.getElementById('previewAutoSize').checked) {
+            document.getElementById('previewWidth').value = detectedWidth;
+            document.getElementById('previewHeight').value = detectedHeight;
+        }
+    }
+
+    previewBitmapCode() {
+        const code = document.getElementById('bitmapCodeInput').value;
+        const resultContainer = document.getElementById('codePreviewResult');
+        const canvas = document.getElementById('codePreviewCanvas');
+        const placeholder = resultContainer.querySelector('.preview-placeholder');
+
+        // Clear previous states
+        resultContainer.classList.remove('success', 'error');
+
+        if (!code.trim()) {
+            this.showPreviewError('Please paste bitmap code first');
+            return;
+        }
+
+        const result = this.parseBitmapCode(code);
+
+        if (!result.success) {
+            this.showPreviewError(result.error);
+            return;
+        }
+
+        const width = parseInt(document.getElementById('previewWidth').value) || 200;
+        const height = parseInt(document.getElementById('previewHeight').value) || 200;
+        const invert = document.getElementById('previewInvert').checked;
+
+        // Render the bitmap
+        this.renderBitmapPreview(result.bytes, width, height, invert);
+
+        // Show canvas, hide placeholder
+        if (placeholder) placeholder.style.display = 'none';
+        canvas.style.display = 'block';
+        resultContainer.classList.add('success');
+
+        // Store the parsed data for "Add to Canvas"
+        this.lastParsedBitmap = {
+            bytes: result.bytes,
+            width,
+            height,
+            invert
+        };
+    }
+
+    renderBitmapPreview(bytes, width, height, invert = false) {
+        const canvas = document.getElementById('codePreviewCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Set canvas size
+        canvas.width = width;
+        canvas.height = height;
+
+        // Create image data
+        const imageData = ctx.createImageData(width, height);
+        const data = imageData.data;
+
+        // Gruvbox colors
+        const bgColor = invert ? [29, 32, 33] : [235, 219, 178]; // dark : light
+        const fgColor = invert ? [235, 219, 178] : [29, 32, 33]; // light : dark
+
+        // Fill with background first
+        for (let i = 0; i < data.length; i += 4) {
+            data[i] = bgColor[0];
+            data[i + 1] = bgColor[1];
+            data[i + 2] = bgColor[2];
+            data[i + 3] = 255;
+        }
+
+        // Render bitmap (1-bit, MSB first)
+        const bytesPerRow = Math.ceil(width / 8);
+
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+                const byteIndex = y * bytesPerRow + Math.floor(x / 8);
+                const bitIndex = 7 - (x % 8); // MSB first
+
+                if (byteIndex < bytes.length) {
+                    const byte = bytes[byteIndex];
+                    const bit = (byte >> bitIndex) & 1;
+
+                    // In typical e-ink: 1 = white/background, 0 = black/foreground
+                    // But this can vary, so we treat 1 as foreground here
+                    const pixelIndex = (y * width + x) * 4;
+
+                    if (bit === 1) {
+                        data[pixelIndex] = fgColor[0];
+                        data[pixelIndex + 1] = fgColor[1];
+                        data[pixelIndex + 2] = fgColor[2];
+                    }
+                }
+            }
+        }
+
+        ctx.putImageData(imageData, 0, 0);
+    }
+
+    showPreviewError(message) {
+        const resultContainer = document.getElementById('codePreviewResult');
+        const canvas = document.getElementById('codePreviewCanvas');
+        const placeholder = resultContainer.querySelector('.preview-placeholder');
+
+        canvas.style.display = 'none';
+        resultContainer.classList.add('error');
+
+        // Show error in placeholder
+        if (placeholder) {
+            placeholder.innerHTML = `
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                </svg>
+                <p>${message}</p>
+            `;
+            placeholder.style.display = 'flex';
+        }
+    }
+
+    addBitmapToCanvas() {
+        if (!this.lastParsedBitmap) {
+            alert('Please preview the code first');
+            return;
+        }
+
+        const { bytes, width, height, invert } = this.lastParsedBitmap;
+
+        // Create a temporary canvas to generate image data
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = width;
+        tempCanvas.height = height;
+        const tempCtx = tempCanvas.getContext('2d');
+
+        // Render to temp canvas
+        const imageData = tempCtx.createImageData(width, height);
+        const data = imageData.data;
+
+        const bgColor = invert ? [29, 32, 33] : [235, 219, 178];
+        const fgColor = invert ? [235, 219, 178] : [29, 32, 33];
+
+        for (let i = 0; i < data.length; i += 4) {
+            data[i] = bgColor[0];
+            data[i + 1] = bgColor[1];
+            data[i + 2] = bgColor[2];
+            data[i + 3] = 255;
+        }
+
+        const bytesPerRow = Math.ceil(width / 8);
+
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+                const byteIndex = y * bytesPerRow + Math.floor(x / 8);
+                const bitIndex = 7 - (x % 8);
+
+                if (byteIndex < bytes.length) {
+                    const byte = bytes[byteIndex];
+                    const bit = (byte >> bitIndex) & 1;
+
+                    const pixelIndex = (y * width + x) * 4;
+
+                    if (bit === 1) {
+                        data[pixelIndex] = fgColor[0];
+                        data[pixelIndex + 1] = fgColor[1];
+                        data[pixelIndex + 2] = fgColor[2];
+                    }
+                }
+            }
+        }
+
+        tempCtx.putImageData(imageData, 0, 0);
+
+        // Convert to data URL
+        const imageDataUrl = tempCanvas.toDataURL('image/png');
+
+        // Add as image element
+        this.saveState();
+
+        const element = {
+            id: ++this.elementIdCounter,
+            type: 'image',
+            x: 0,
+            y: 0,
+            width: Math.min(width, this.WIDTH),
+            height: Math.min(height, this.HEIGHT),
+            imageData: imageDataUrl,
+            visible: true,
+            locked: false
+        };
+
+        this.elements.push(element);
+        this.createElementDOM(element);
+        this.selectElement(element);
+        this.updateLayers();
+        this.renderCanvas();
+        this.updateExportPreview();
+
+        // Scroll to canvas
+        document.getElementById('watchyDisplay').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    clearCodePreview() {
+        document.getElementById('bitmapCodeInput').value = '';
+        document.getElementById('detectedDimensions').textContent = 'Auto-detect dimensions';
+        document.getElementById('detectedDimensions').className = '';
+
+        const resultContainer = document.getElementById('codePreviewResult');
+        const canvas = document.getElementById('codePreviewCanvas');
+        const placeholder = resultContainer.querySelector('.preview-placeholder');
+
+        canvas.style.display = 'none';
+        resultContainer.classList.remove('success', 'error');
+
+        if (placeholder) {
+            placeholder.innerHTML = `
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                    <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                    <polyline points="21 15 16 10 5 21"></polyline>
+                </svg>
+                <p>Preview will appear here</p>
+            `;
+            placeholder.style.display = 'flex';
+        }
+
+        this.lastParsedBitmap = null;
     }
 
     // ===== Keyboard Shortcuts =====

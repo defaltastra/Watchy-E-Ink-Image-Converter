@@ -1524,4 +1524,298 @@ body {
         width: 100%;
         justify-content: center;
     }
+
+    .code-preview-layout {
+        grid-template-columns: 1fr !important;
+    }
+
+    .code-preview-result {
+        height: 250px !important;
+    }
+}
+
+/* ===== Code Preview Section ===== */
+.code-preview-section {
+    background: var(--bg-card);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    margin-top: 1rem;
+}
+
+.code-preview-section h3 {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--gruvbox-blue);
+    margin-bottom: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.code-preview-section h3 svg {
+    width: 18px;
+    height: 18px;
+}
+
+.collapse-btn {
+    margin-left: auto;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    color: var(--text-secondary);
+}
+
+.collapse-btn:hover {
+    border-color: var(--gruvbox-blue);
+    color: var(--gruvbox-blue);
+}
+
+.collapse-btn svg {
+    width: 14px;
+    height: 14px;
+    transition: transform var(--transition-fast);
+}
+
+.collapse-btn.collapsed svg {
+    transform: rotate(-90deg);
+}
+
+.code-preview-content {
+    display: grid;
+    gap: 1.5rem;
+    transition: all var(--transition-normal);
+    overflow: hidden;
+    max-height: 800px;
+}
+
+.code-preview-content.collapsed {
+    max-height: 0;
+    padding: 0;
+    margin: 0;
+    opacity: 0;
+}
+
+.code-preview-layout {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 1.5rem;
+}
+
+.code-input-area {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.code-input-area label {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+.code-input-area textarea {
+    width: 100%;
+    min-height: 180px;
+    max-height: 300px;
+    resize: vertical;
+    padding: 1rem;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    line-height: 1.5;
+    transition: border-color var(--transition-fast);
+}
+
+.code-input-area textarea::placeholder {
+    color: var(--text-muted);
+    opacity: 0.7;
+}
+
+.code-input-area textarea:focus {
+    outline: none;
+    border-color: var(--gruvbox-blue);
+    box-shadow: 0 0 0 2px rgba(131, 165, 152, 0.2);
+}
+
+.code-input-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.code-input-info span {
+    font-size: 0.75rem;
+    font-family: var(--font-mono);
+    color: var(--text-muted);
+    padding: 0.25rem 0.5rem;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-sm);
+}
+
+.code-input-info span.detected {
+    color: var(--gruvbox-green);
+    background: rgba(184, 187, 38, 0.1);
+}
+
+.code-input-info span.error {
+    color: var(--gruvbox-red);
+    background: rgba(251, 73, 52, 0.1);
+}
+
+.code-preview-settings {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.preview-dimension-inputs {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.dimension-input-group {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.dimension-input-group label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.dimension-input-group input {
+    padding: 0.6rem 0.75rem;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+    font-size: 0.9rem;
+    text-align: center;
+}
+
+.dimension-input-group input:focus {
+    outline: none;
+    border-color: var(--gruvbox-blue);
+}
+
+.preview-options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.preview-options .checkbox-label {
+    font-size: 0.85rem !important;
+    color: var(--text-secondary) !important;
+    text-transform: none !important;
+}
+
+.preview-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-top: auto;
+}
+
+.preview-actions .btn {
+    justify-content: center;
+}
+
+.code-preview-result {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    min-height: 220px;
+    padding: 1rem;
+    position: relative;
+    overflow: hidden;
+}
+
+.preview-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    color: var(--text-muted);
+    padding: 2rem;
+}
+
+.preview-placeholder svg {
+    width: 48px;
+    height: 48px;
+    opacity: 0.4;
+}
+
+.preview-placeholder p {
+    font-size: 0.85rem;
+}
+
+#codePreviewCanvas {
+    background: #ebdbb2;
+    image-rendering: pixelated;
+    border: 2px solid var(--border-light);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-md);
+    max-width: 100%;
+    max-height: 200px;
+}
+
+/* Preview success animation */
+@keyframes previewSuccess {
+    0% {
+        box-shadow: 0 0 0 0 rgba(184, 187, 38, 0.4);
+    }
+    70% {
+        box-shadow: 0 0 0 10px rgba(184, 187, 38, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(184, 187, 38, 0);
+    }
+}
+
+.code-preview-result.success #codePreviewCanvas {
+    animation: previewSuccess 0.6s ease-out;
+    border-color: var(--gruvbox-green);
+}
+
+/* Error state */
+.code-preview-result.error {
+    border-color: var(--gruvbox-red);
+}
+
+.code-preview-result .error-message {
+    color: var(--gruvbox-red);
+    font-size: 0.85rem;
+    text-align: center;
+    padding: 1rem;
+}
+
+.code-preview-result .error-message svg {
+    width: 32px;
+    height: 32px;
+    margin-bottom: 0.5rem;
+    opacity: 0.7;
 }
